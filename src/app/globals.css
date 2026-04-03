@@ -1,26 +1,230 @@
 @import "tailwindcss";
 
+/* ─── Design Tokens ─────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Backgrounds */
+  --bg: #f5f5f5;
+  --bg-card: #ffffff;
+  --bg-input: #ffffff;
+  --bg-hover: #f0f0f0;
+  --bg-overlay: rgba(255, 255, 255, 0.85);
+
+  /* Text */
+  --text: #0a0a0a;
+  --text-secondary: #4a4a4a;
+  --text-muted: #8a8a8a;
+  --text-inverse: #ffffff;
+
+  /* Brand — black primary, red accent, white highlight */
+  --brand: #0a0a0a;
+  --brand-hover: #1a1a1a;
+  --brand-light: #f0f0f0;
+  --accent: #dc2626;
+  --accent-hover: #b91c1c;
+  --accent-light: #fef2f2;
+
+  /* Borders */
+  --border: #e0e0e0;
+  --border-focus: #0a0a0a;
+  --border-strong: #c0c0c0;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 4px 0 rgb(0 0 0 / 0.07);
+  --shadow-md: 0 4px 20px 0 rgb(0 0 0 / 0.10);
+  --shadow-lg: 0 12px 40px 0 rgb(0 0 0 / 0.14);
+  --shadow-xl: 0 20px 60px 0 rgb(0 0 0 / 0.18);
+
+  /* Pattern */
+  --pattern-color: rgba(0, 0, 0, 0.045);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+[data-theme="dark"] {
+  --bg: #0c0c0d;
+  --bg-card: #141416;
+  --bg-input: #1c1c1f;
+  --bg-hover: #222226;
+  --bg-overlay: rgba(20, 20, 22, 0.90);
+
+  --text: #f0f0f0;
+  --text-secondary: #a0a0a0;
+  --text-muted: #606060;
+  --text-inverse: #0a0a0a;
+
+  --brand: #f0f0f0;
+  --brand-hover: #ffffff;
+  --brand-light: #1c1c1f;
+  --accent: #ef4444;
+  --accent-hover: #dc2626;
+  --accent-light: #1f0a0a;
+
+  --border: #2a2a2e;
+  --border-focus: #f0f0f0;
+  --border-strong: #3a3a3e;
+
+  --shadow-sm: 0 1px 4px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 20px 0 rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 12px 40px 0 rgb(0 0 0 / 0.5);
+  --shadow-xl: 0 20px 60px 0 rgb(0 0 0 / 0.6);
+
+  --pattern-color: rgba(255, 255, 255, 0.03);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ─── Global Base ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { height: 100%; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  min-height: 100%;
+  transition: background 0.25s ease, color 0.25s ease;
 }
+
+/* ─── Background Pattern ─────────────────────────────────────── */
+.bg-pattern {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--pattern-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pattern-color) 1px, transparent 1px);
+  background-size: 40px 40px;
+  transition: background-color 0.25s ease;
+}
+
+/* ─── Typography ────────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  letter-spacing: -0.03em;
+}
+
+/* ─── Card ───────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-lg);
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+/* ─── Input ──────────────────────────────────────────────────── */
+.input-field {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 1.5px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.25s ease;
+  outline: none;
+}
+
+.input-field::placeholder { color: var(--text-muted); }
+
+.input-field:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
+/* ─── Buttons ────────────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.25rem;
+  border-radius: 0.5rem;
+  background: var(--brand);
+  color: var(--text-inverse);
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  box-shadow: var(--shadow-sm);
+  letter-spacing: 0.01em;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--brand-hover);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) { transform: translateY(0); }
+
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.btn-outline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+/* ─── Divider ─────────────────────────────────────────────────── */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ─── Left panel accent bar ─────────────────────────────────── */
+.accent-bar {
+  background: linear-gradient(180deg, #0a0a0a 0%, #dc2626 50%, #0a0a0a 100%);
+}
+
+[data-theme="dark"] .accent-bar {
+  background: linear-gradient(180deg, #f0f0f0 0%, #ef4444 50%, #f0f0f0 100%);
+}
+
+/* ─── Animations ────────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes slide-right {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.animate-slide-right {
+  animation: slide-right 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
