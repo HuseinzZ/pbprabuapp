@@ -1,0 +1,21 @@
+import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import EditProfileForm from "@/components/user-profile/EditProfileForm";
+import { Metadata } from "next";
+import React from "react";
+
+export const metadata: Metadata = {
+    title: "Edit Profile | PB Prabu Bandung",
+    description: "Edit Profile page for PB Prabu Bandung",
+};
+
+export default async function EditProfile({ params }: { params: Promise<{ id: string }> }) {
+    const resolvedParams = await params;
+    return (
+        <div>
+            <PageBreadcrumb pageTitle="Edit Profile" />
+            <div className="space-y-6">
+                <EditProfileForm userId={resolvedParams.id} />
+            </div>
+        </div>
+    );
+}
