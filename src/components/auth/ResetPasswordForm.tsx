@@ -20,6 +20,7 @@ export default function ResetPasswordForm({ userId }: { userId?: string }) {
   const [saving, setSaving] = useState(false);
   const [navigating, setNavigating] = useState(false);
   const [notif, setNotif] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const supabase = createClient();
 
   const isProcessing = loading || saving || navigating;
@@ -46,25 +47,44 @@ export default function ResetPasswordForm({ userId }: { userId?: string }) {
     checkUser();
   }, [supabase, userId]);
 
-  const passwordValid = password.length >= 8;
-  const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
-
   function showNotif(type: 'success' | 'error', message: string) {
     setNotif({ type, message });
-    setTimeout(() => setNotif(null), 5000);
+    setTimeout(() => setNotif(null), 4000);
   }
+
+  function validateField(name: string, val1: string, val2: string) {
+    let error = "";
+    if (name === "password") {
+      if (!val1) error = "Password wajib diisi";
+      else if (val1.length < 8) error = "Password minimal 8 karakter";
+    } else if (name === "confirmPassword") {
+      if (!val2) error = "Konfirmasi password wajib diisi";
+      else if (val1 !== val2) error = "Password tidak cocok";
+    }
+    setErrors(prev => ({ ...prev, [name]: error }));
+    return error;
+  }
+
+  const handlePasswordChange = (val: string) => {
+    setPassword(val);
+    validateField("password", val, confirmPassword);
+    if (confirmPassword) validateField("confirmPassword", val, confirmPassword);
+  };
+
+  const handleConfirmPasswordChange = (val: string) => {
+    setConfirmPassword(val);
+    validateField("confirmPassword", password, val);
+  };
 
   async function handleResetPassword(e: React.FormEvent) {
     e.preventDefault();
     setNotif(null);
 
-    if (!passwordValid) {
-      showNotif('error', 'Password minimal 8 karakter.');
-      return;
-    }
+    const errPass = validateField("password", password, confirmPassword);
+    const errConf = validateField("confirmPassword", password, confirmPassword);
 
-    if (!passwordsMatch) {
-      showNotif('error', 'Password tidak cocok.');
+    if (errPass || errConf) {
+      showNotif('error', 'Mohon perbaiki kesalahan pada formulir');
       return;
     }
 
@@ -97,11 +117,11 @@ export default function ResetPasswordForm({ userId }: { userId?: string }) {
   return (
     <div className="relative">
       {/* Loader Overlay — only covers the card, not header/sidebar/footer */}
-      {navigating && (
+      {/* {navigating && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm rounded-2xl">
           <Loader />
         </div>
-      )}
+      )} */}
       <ComponentCard title="Ubah Password">
       {notif && (
         <div className={`mb-4 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border text-sm ${notif.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-950/40 dark:border-green-800 dark:text-green-200' : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950/40 dark:border-red-800 dark:text-red-200'}`}>
@@ -119,8 +139,9 @@ export default function ResetPasswordForm({ userId }: { userId?: string }) {
               id="password"
               type={showPass ? 'text' : 'password'}
               value={password}
-              onChange={(e: any) => setPassword(e.target.value)}
+              onChange={(e: any) => handlePasswordChange(e.target.value)}
               placeholder="Masukan password baru"
+              error={!!errors.password}
               required
             />
             <button
@@ -135,13 +156,8 @@ export default function ResetPasswordForm({ userId }: { userId?: string }) {
               )}
             </button>
           </div>
-          {password && (
-            <div className="mt-2 flex items-center gap-1.5 text-xs">
-              <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 ${passwordValid ? 'bg-brand-500' : 'border border-gray-300 dark:border-gray-600'}`}>
-                {passwordValid && <Check size={9} className="text-white" />}
-              </div>
-              <span className={passwordValid ? 'text-brand-600 dark:text-brand-400' : 'text-gray-500 dark:text-gray-400'}>Minimal 8 karakter</span>
-            </div>
+          {errors.password && (
+            <p className="mt-1 text-xs text-red-500">{errors.password}</p>
           )}
         </div>
 
@@ -153,8 +169,9 @@ export default function ResetPasswordForm({ userId }: { userId?: string }) {
               id="confirmPassword"
               type={showConfirmPass ? 'text' : 'password'}
               value={confirmPassword}
-              onChange={(e: any) => setConfirmPassword(e.target.value)}
+              onChange={(e: any) => handleConfirmPasswordChange(e.target.value)}
               placeholder="Konfirmasi password baru"
+              error={!!errors.confirmPassword}
               required
             />
             <button
@@ -169,13 +186,8 @@ export default function ResetPasswordForm({ userId }: { userId?: string }) {
               )}
             </button>
           </div>
-          {confirmPassword && (
-            <div className="mt-2 flex items-center gap-1.5 text-xs">
-              <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 ${passwordsMatch ? 'bg-brand-500' : 'border border-gray-300 dark:border-gray-600'}`}>
-                {passwordsMatch && <Check size={9} className="text-white" />}
-              </div>
-              <span className={passwordsMatch ? 'text-brand-600 dark:text-brand-400' : 'text-gray-500 dark:text-gray-400'}>Password cocok</span>
-            </div>
+          {errors.confirmPassword && (
+            <p className="mt-1 text-xs text-red-500">{errors.confirmPassword}</p>
           )}
         </div>
 
@@ -186,15 +198,11 @@ export default function ResetPasswordForm({ userId }: { userId?: string }) {
             disabled={isProcessing}
             className="flex flex-1 justify-center items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
           >
-            {navigating ? (
-              <><Loader2 size={16} className="animate-spin" /><span>Kembali...</span></>
-            ) : (
-              <><ArrowLeft size={16} /><span>Kembali</span></>
-            )}
+            <ArrowLeft size={16} /><span>Kembali</span>
           </button>
           <button
             type="submit"
-            disabled={isProcessing || !passwordValid || !passwordsMatch}
+            disabled={isProcessing}
             className="flex flex-1 justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-500/20 disabled:opacity-50 gap-2 items-center"
           >
             {saving ? (

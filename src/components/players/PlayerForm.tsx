@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Camera, CheckCircle2, AlertCircle, UserCheck } from "lucide-react";
+import { Loader2, Camera, CheckCircle2, AlertCircle, UserCheck, ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import ComponentCard from "@/components/common/ComponentCard";
 import Label from "@/components/form/Label";
@@ -408,19 +408,21 @@ export default function PlayerForm({ playerId }: PlayerFormProps) {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <Link
                   href="/admin/players"
-                  className="px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
-                  Batal
+                  <ArrowLeft className="w-4 h-4" />
+                  Kembali
                 </Link>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-sm"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-sm"
                 >
-                  {saving ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Tambah Pemain"}
+                  <Save className="w-4 h-4" />
+                  {saving ? "Menyimpan..." : isEdit ? "Simpan" : "Simpan"}
                 </button>
               </div>
             </form>

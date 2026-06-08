@@ -49,6 +49,10 @@ function Lightbox({ items, initialIndex, onClose }: LightboxProps) {
   const [index, setIndex] = useState(initialIndex);
   const [playing, setPlaying] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showThumbnails, setShowThumbnails] = useState(true);
   const playRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -59,11 +63,13 @@ function Lightbox({ items, initialIndex, onClose }: LightboxProps) {
 
   const prev = useCallback(() => {
     setZoom(1);
+    setPan({ x: 0, y: 0 });
     setIndex((i) => (i - 1 + items.length) % items.length);
   }, [items.length]);
 
   const next = useCallback(() => {
     setZoom(1);
+    setPan({ x: 0, y: 0 });
     setIndex((i) => (i + 1) % items.length);
   }, [items.length]);
 
@@ -124,8 +130,47 @@ function Lightbox({ items, initialIndex, onClose }: LightboxProps) {
   };
 
   function zoomIn() { setZoom((z) => Math.min(z + 0.5, 4)); }
-  function zoomOut() { setZoom((z) => Math.max(z - 0.5, 0.5)); }
-  function zoomReset() { setZoom(1); }
+  function zoomOut() { 
+    setZoom((z) => {
+      const newZoom = Math.max(z - 0.5, 1);
+      if (newZoom === 1) setPan({ x: 0, y: 0 });
+      return newZoom;
+    }); 
+  }
+  function zoomReset() { setZoom(1); setPan({ x: 0, y: 0 }); }
+
+  // Drag Handlers
+  const [hasPanned, setHasPanned] = useState(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoom <= 1) return;
+    setIsDragging(true);
+    setHasPanned(false);
+    dragStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || zoom <= 1) return;
+    setHasPanned(true);
+    setPan({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y });
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (zoom <= 1) return;
+    setIsDragging(true);
+    setHasPanned(false);
+    dragStart.current = { x: e.touches[0].clientX - pan.x, y: e.touches[0].clientY - pan.y };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || zoom <= 1) return;
+    setHasPanned(true);
+    setPan({ x: e.touches[0].clientX - dragStart.current.x, y: e.touches[0].clientY - dragStart.current.y });
+  };
+
+  const handleTouchEnd = () => setIsDragging(false);
 
   if (!mounted || !item) return null;
 
@@ -163,7 +208,7 @@ function Lightbox({ items, initialIndex, onClose }: LightboxProps) {
           {/* Zoom out */}
           <button
             onClick={zoomOut}
-            disabled={zoom <= 0.5}
+            disabled={zoom <= 1}
             title="Zoom out"
             className="w-8 h-8 flex items-center justify-center rounded !text-white hover:bg-white/10 transition-colors disabled:opacity-30"
           >
@@ -252,66 +297,64 @@ function Lightbox({ items, initialIndex, onClose }: LightboxProps) {
 
       {/* ── Main image area ────────────────────────────────────────────────── */}
       <div className="flex-1 flex items-center relative overflow-hidden z-10">
-        {/* Prev ghost (peeking from left) */}
+        {/* Prev (left) */}
         {items.length > 1 && (
           <div
-            className="absolute left-0 top-0 bottom-0 w-28 z-10 cursor-pointer flex items-center"
+            className="absolute left-0 top-0 bottom-0 w-16 md:w-28 z-20 cursor-pointer flex items-center justify-center group"
             onClick={prev}
           >
-            <div className="relative w-full h-full opacity-25 hover:opacity-40 transition-opacity overflow-hidden">
-              <Image
-                src={getImageUrl(items[prevIndex].image_url)}
-                alt=""
-                fill
-                className="object-cover blur-[1px]"
-                unoptimized
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-            </div>
-            <div className="absolute left-3 text-white hover:text-white transition-colors">
-              <ChevronLeft className="w-8 h-8 drop-shadow-lg" />
+            <div className="flex items-center justify-center w-10 h-10 md:w-14 md:h-14 rounded-full bg-white/10 group-hover:bg-white/20 backdrop-blur-md transition-all text-white">
+              <ChevronLeft className="w-6 h-6 md:w-8 md:h-8 drop-shadow-md" />
             </div>
           </div>
         )}
 
         {/* Main photo */}
         <div
-          className="flex-1 flex items-center justify-center h-full px-28 py-4 cursor-zoom-in"
-          onClick={() => zoom < 4 ? zoomIn() : zoomReset()}
+          className={`flex-1 flex items-center justify-center h-full px-4 md:px-24 py-4 z-10 ${zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-in'}`}
+          onClick={() => {
+            if (hasPanned && zoom > 1) {
+              setHasPanned(false);
+              return;
+            }
+            zoom < 4 ? zoomIn() : zoomReset();
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           <div
-            className="relative transition-transform duration-200 ease-out"
-            style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
+            className="relative flex items-center justify-center max-w-full max-h-full"
+            style={{ 
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, 
+              transformOrigin: "center center",
+              transition: isDragging ? "none" : "transform 0.2s ease-out" 
+            }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               key={item.id}
               src={getImageUrl(item.image_url)}
               alt={item.title}
-              className="object-contain shadow-2xl rounded-sm max-w-[85vw]"
-              style={{ display: "block", height: "70vh", width: "auto" }}
+              className="object-contain shadow-2xl rounded-sm max-w-full max-h-full"
+              style={{ display: "block", userSelect: "none" }}
+              draggable={false}
             />
           </div>
         </div>
 
-        {/* Next ghost (peeking from right) */}
+        {/* Next (right) */}
         {items.length > 1 && (
           <div
-            className="absolute right-0 top-0 bottom-0 w-28 z-10 cursor-pointer flex items-center justify-end"
+            className="absolute right-0 top-0 bottom-0 w-16 md:w-28 z-20 cursor-pointer flex items-center justify-center group"
             onClick={next}
           >
-            <div className="relative w-full h-full opacity-25 hover:opacity-40 transition-opacity overflow-hidden">
-              <Image
-                src={getImageUrl(items[nextIndex].image_url)}
-                alt=""
-                fill
-                className="object-cover blur-[1px]"
-                unoptimized
-              />
-              <div className="absolute inset-0 bg-gradient-to-l from-black/60 to-transparent" />
-            </div>
-            <div className="absolute right-3 text-white hover:text-white transition-colors">
-              <ChevronRight className="w-8 h-8 drop-shadow-lg" />
+            <div className="flex items-center justify-center w-10 h-10 md:w-14 md:h-14 rounded-full bg-white/10 group-hover:bg-white/20 backdrop-blur-md transition-all text-white">
+              <ChevronRight className="w-6 h-6 md:w-8 md:h-8 drop-shadow-md" />
             </div>
           </div>
         )}
@@ -403,23 +446,21 @@ export default function GalleryGrid({ items }: GalleryGridProps) {
       )}
 
       {/* ─── Toolbar ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mr-1">
-            <Filter className="w-3.5 h-3.5" /> Filter:
-          </span>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Category Filter Tabs */}
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-2 overflow-x-auto shrink-0 w-full sm:w-auto">
           {filters.map((f) => (
             <button
               key={f}
               onClick={() => setActiveFilter(f)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${activeFilter === f
-                ? "bg-brand-500 text-white shadow-sm"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+              className={`px-4 py-1 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === f
+                ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                 }`}
             >
               {CATEGORY_LABELS[f]}
               {f !== "all" && (
-                <span className="ml-1 opacity-70">
+                <span className="ml-1 opacity-70 font-normal">
                   ({items.filter((i) => i.category === f).length})
                 </span>
               )}
@@ -427,46 +468,53 @@ export default function GalleryGrid({ items }: GalleryGridProps) {
           ))}
         </div>
 
-        <button
-          onClick={() => { setNavigatingAdd(true); router.push("/admin/gallery/add"); }}
-          disabled={navigatingAdd}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm whitespace-nowrap disabled:opacity-70"
-        >
-          {navigatingAdd ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-          Tambah Foto
-        </button>
+        {/* Add Button */}
+        <div className="flex shrink-0 w-full sm:w-auto">
+          <button
+            onClick={() => { setNavigatingAdd(true); router.push("/admin/gallery/add"); }}
+            disabled={navigatingAdd}
+            className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm whitespace-nowrap disabled:opacity-70"
+          >
+            {navigatingAdd ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            Tambah Foto
+          </button>
+        </div>
       </div>
 
-      {/* ─── Stats ───────────────────────────────────────────────────────────── */}
-      <p className="text-sm text-gray-500 dark:text-gray-400">
-        Menampilkan <span className="font-semibold text-gray-700 dark:text-gray-300">{filtered.length}</span> dari {items.length} foto
-      </p>
-
-      {/* ─── Grid ────────────────────────────────────────────────────────────── */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-          <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4 mt-2">
-            <ImageIcon className="w-8 h-8 text-gray-400" />
-          </div>
-          <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1">Belum ada foto</p>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mb-6">
-            {activeFilter === "all"
-              ? "Mulai tambahkan foto pertama Anda."
-              : `Belum ada foto kategori "${CATEGORY_LABELS[activeFilter]}".`}
+      {/* ─── Grid Container ────────────────────────────────────────────────────── */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
+        {/* ─── Stats ───────────────────────────────────────────────────────────── */}
+        {/* <div className="mb-6 flex items-center justify-between">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Menampilkan <span className="font-semibold text-gray-700 dark:text-gray-300">{filtered.length}</span> dari {items.length} foto
           </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filtered.map((item, index) => (
-            <GalleryCard
-              key={item.id}
-              item={item}
-              onView={() => setLightboxIndex(index)}
-              onEdit={() => router.push(`/admin/gallery/edit/${item.id}`)}
-            />
-          ))}
-        </div>
-      )}
+        </div> */}
+
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4 mt-2">
+              <ImageIcon className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1">Belum ada foto</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mb-6">
+              {activeFilter === "all"
+                ? "Mulai tambahkan foto pertama Anda."
+                : `Belum ada foto kategori "${CATEGORY_LABELS[activeFilter]}".`}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
+            {filtered.map((item, index) => (
+              <GalleryCard
+                key={item.id}
+                item={item}
+                onView={() => setLightboxIndex(index)}
+                onEdit={() => router.push(`/admin/gallery/edit/${item.id}`)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -482,27 +530,20 @@ function GalleryCard({
   onView: () => void;
   onEdit: () => void;
 }) {
-  const [navigatingEdit, setNavigatingEdit] = useState(false);
   const category = item.category as GalleryCategory | null;
   const colorScheme = category ? CATEGORY_COLORS[category] : CATEGORY_COLORS.general;
 
   function handleEdit(e: React.MouseEvent) {
     e.stopPropagation();
-    setNavigatingEdit(true);
     onEdit();
   }
 
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
-      {navigatingEdit && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm">
-          <Loader />
-        </div>
-      )}
 
       {/* Image — click to open lightbox */}
       <div
-        className="relative w-full overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-zoom-in"
+        className="relative w-full overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-zoom-in border-b border-gray-200 dark:border-gray-800"
         style={{ aspectRatio: "4/3" }}
         onClick={onView}
       >
@@ -549,10 +590,9 @@ function GalleryCard({
           </span>
           <button
             onClick={handleEdit}
-            disabled={navigatingEdit}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-brand-500 hover:text-white text-gray-600 dark:text-gray-400 text-xs font-medium transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-brand-500 hover:text-white text-gray-600 dark:text-gray-400 text-xs font-medium transition-colors"
           >
-            {navigatingEdit ? <Loader2 className="w-3 h-3 animate-spin" /> : <Edit2 className="w-3 h-3" />}
+            <Edit2 className="w-3 h-3" />
             Edit
           </button>
         </div>

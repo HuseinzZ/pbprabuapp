@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function AddGalleryPage() {
   return (
     <div className="space-y-6">
-      <PageBreadcrumb pageTitle="Tambah Foto" />
+      <PageBreadcrumb pageTitle="Tambah Foto" paths={[{ name: "Galeri Foto", href: "/admin/gallery" }]} />
       <GalleryForm />
     </div>
   );

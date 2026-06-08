@@ -14,7 +14,6 @@ interface TablePlayersProps {
   totalPages: number;
   totalPlayers: number;
   onPageChange: (page: number) => void;
-  onLinkAccount: (player: Player) => void;
   onEditPlayer: (player: Player) => void;
   onDeletePlayer: (player: Player) => void;
 }
@@ -28,7 +27,6 @@ export default function TablePlayers({
   totalPages,
   totalPlayers,
   onPageChange,
-  onLinkAccount,
   onEditPlayer,
   onDeletePlayer,
 }: TablePlayersProps) {
@@ -56,12 +54,12 @@ export default function TablePlayers({
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="max-w-full overflow-x-auto">
-        <div className="min-w-[1102px]">
+        <div className="w-full">
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
                 <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                  #
+                  No.
                 </TableCell>
                 <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                   Pemain
@@ -89,12 +87,12 @@ export default function TablePlayers({
                 const lvlColors = player.level ? LEVEL_COLORS[player.level] : null;
                 return (
                   <TableRow key={player.id} >
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400 font-mono">
-                      {(player.ranking_position ?? globalIdx).toString().padStart(2, "0")}
+                    <TableCell className="px-5 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400 font-mono">
+                      {globalIdx}
                     </TableCell>
-                    <TableCell className="px-5 py-4 sm:px-6 text-start">
+                    <TableCell className="px-5 py-3 text-start">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-sm font-bold shrink-0 relative">
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-xs font-bold shrink-0 relative">
                           {player.avatar_url ? (
                             <Image
                               src={player.avatar_url}
@@ -110,11 +108,6 @@ export default function TablePlayers({
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
                             {player.full_name}
-                            {player.profile_id && (
-                              <span title="Akun tertaut" className="text-brand-500">
-                                <UserCheck className="w-3.5 h-3.5" />
-                              </span>
-                            )}
                           </p>
                           {player.nickname && (
                             <p className="text-xs text-gray-400">{player.nickname}</p>
@@ -122,7 +115,7 @@ export default function TablePlayers({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="px-5 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                       {lvlColors ? (
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${lvlColors.bg} ${lvlColors.text}`}
@@ -134,19 +127,19 @@ export default function TablePlayers({
                         <span className="text-gray-400 text-xs">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="px-5 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                       <p className="text-gray-700 dark:text-gray-300">
                         {player.email ?? "—"}
                       </p>
                       <p className="text-xs text-gray-400">{player.phone ?? ""}</p>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="px-5 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                       <span className="font-semibold text-gray-900 dark:text-white">
                         {player.ranking_points.toLocaleString()}
                       </span>
                       <span className="text-xs text-gray-400 ml-1">pts</span>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="px-5 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${player.is_active
                           ? "bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400"
@@ -157,15 +150,8 @@ export default function TablePlayers({
                         {player.is_active ? "Aktif" : "Nonaktif"}
                       </span>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-end text-theme-sm dark:text-gray-400">
+                    <TableCell className="px-5 py-3 text-gray-500 text-end text-theme-sm dark:text-gray-400">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => onLinkAccount(player)}
-                          className={`p-1.5 rounded-lg transition-colors ${player.profile_id ? 'text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10' : 'text-gray-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10'}`}
-                          title={player.profile_id ? "Edit Tautan Akun" : "Tautkan Akun"}
-                        >
-                          {player.profile_id ? <Link2 className="w-4 h-4" /> : <Link2Off className="w-4 h-4" />}
-                        </button>
                         <button
                           onClick={() => onEditPlayer(player)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"

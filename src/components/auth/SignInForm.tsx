@@ -75,7 +75,7 @@ export default function SignInForm() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-      showNotif('success', 'Berhasil masuk! Mengalihkan...');
+      showNotif('success', 'Berhasil masuk...');
       setTimeout(() => {
         router.push(profile?.role === 'admin' ? '/admin' : '/');
         router.refresh();
@@ -179,12 +179,10 @@ export default function SignInForm() {
                 required
                 autoComplete="email"
               />
-              {email && (
-                <div className="mt-1.5 flex items-center gap-1.5 text-xs">
-                  <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 ${emailValid ? 'bg-green-500' : 'border border-[var(--border)]'}`}>
-                    {emailValid && <Check size={9} className="text-white" />}
-                  </div>
-                  <span className={emailValid ? 'text-green-600' : 'text-[var(--text-muted)]'}>Format email valid</span>
+              {email && !emailValid && (
+                <div className="mt-1.5 flex items-center gap-1 text-xs text-red-500">
+                  {/* <AlertCircle size={12} /> */}
+                  <span>Masukan email dengan benar</span>
                 </div>
               )}
             </div>
@@ -219,12 +217,10 @@ export default function SignInForm() {
                   {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
-              {password && (
-                <div className="mt-1.5 flex items-center gap-1.5 text-xs">
-                  <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 ${passwordValid ? 'bg-green-500' : 'border border-[var(--border)]'}`}>
-                    {passwordValid && <Check size={9} className="text-white" />}
-                  </div>
-                  <span className={passwordValid ? 'text-green-600' : 'text-[var(--text-muted)]'}>Minimal 8 karakter</span>
+              {password && !passwordValid && (
+                <div className="mt-1.5 flex items-center gap-1 text-xs text-red-500">
+                  {/* <AlertCircle size={12} /> */}
+                  <span>Password minimal 8 karakter, mengandung huruf kecil, huruf besar, angka dan simbol</span>
                 </div>
               )}
             </div>

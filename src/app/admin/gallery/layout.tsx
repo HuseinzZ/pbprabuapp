@@ -1,11 +1,11 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Hapus Pemain | PB Prabu Bandung",
-  description: "Konfirmasi penghapusan data pemain.",
+  title: "Galeri Foto | PB Prabu Bandung",
+  description: "Galeri foto kegiatan PB Prabu Bandung.",
 };
 
-export default function DeletePlayerLayout({
+export default function GalleryLayout({
   children,
 }: {
   children: React.ReactNode;

@@ -1128,3 +1128,12 @@ input.flatpickr-input[readonly]:focus {
   border-color: #465fff !important;
   box-shadow: 0 0 0 2px rgba(70, 95, 255, 0.2) !important;
 }
+
+/* ─── Match Table Group Headers ──────────────────────────────── */
+.match-group-header {
+  background-color: #f9fafb;
+}
+
+.dark .match-group-header {
+  background-color: transparent !important;
+}

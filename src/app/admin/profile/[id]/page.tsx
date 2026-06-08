@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default async function Profile({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = await params;
     return (
-        <div>
+        <div className="space-y-6">
             <PageBreadcrumb pageTitle="Profile" />
             <div className="space-y-6">
                 <UserInfoCard userId={resolvedParams.id} />

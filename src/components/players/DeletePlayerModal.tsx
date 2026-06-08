@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AlertCircle } from "lucide-react";
 import { Player } from "@/app/admin/players/types";
-import Loader from "@/components/shared/Loader";
 
 interface DeletePlayerModalProps {
   isOpen: boolean;
@@ -18,17 +18,17 @@ export default function DeletePlayerModal({
   player,
   isDeleting,
 }: DeletePlayerModalProps) {
-  if (!isOpen || !player) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !player || !mounted) return null;
+
+  return createPortal(
     <>
-      {isDeleting && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm">
-          <Loader />
-        </div>
-      )}
-
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center">
         <div
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           onClick={onClose}
@@ -71,6 +71,7 @@ export default function DeletePlayerModal({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

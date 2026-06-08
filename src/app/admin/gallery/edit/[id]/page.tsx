@@ -30,7 +30,7 @@ export default async function EditGalleryPage({
 
   return (
     <div className="space-y-6">
-      <PageBreadcrumb pageTitle="Edit Foto" />
+      <PageBreadcrumb pageTitle="Edit Foto" paths={[{ name: "Galeri Foto", href: "/admin/gallery" }]} />
       <GalleryForm galleryId={id} initialData={item as GalleryItem} />
     </div>
   );

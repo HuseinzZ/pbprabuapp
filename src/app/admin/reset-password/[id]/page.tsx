@@ -11,7 +11,7 @@ export default async function ResetPasswordPage({ params }: { params: Promise<{ 
     const { id } = await params;
     
     return (
-        <div>
+        <div className="space-y-6">
             <PageBreadcrumb pageTitle="Ubah password" />
             <div className="flex justify-center">
                 <div className="w-full max-w-[580px]">

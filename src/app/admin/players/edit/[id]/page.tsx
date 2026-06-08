@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 export default async function EditPlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return (
-    <div>
-      <PageBreadcrumb pageTitle="Edit Pemain" />
+    <div className="space-y-6">
+      <PageBreadcrumb pageTitle="Edit Pemain" paths={[{ name: "Manajemen Pemain", href: "/admin/players" }]} />
       <PlayerForm playerId={id} />
     </div>
   );

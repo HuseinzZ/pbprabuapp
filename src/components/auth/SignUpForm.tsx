@@ -4,10 +4,16 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Eye, EyeOff, Loader2, UserPlus, Check } from 'lucide-react';
+import { Eye, EyeOff, Loader2, UserPlus, Check, X, AlertCircle, CheckCircle2, MailWarning } from 'lucide-react';
 import Loader from '@/components/shared/Loader';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+
+// Tipe notifikasi
+type NotifType = 'success' | 'error' | 'warning' | null;
+
+interface Notif {
+  type: NotifType;
+  message: string;
+}
 
 export default function SignUpForm() {
   const [form, setForm] = useState({ full_name: '', email: '', password: '', confirm: '' });
@@ -15,6 +21,7 @@ export default function SignUpForm() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [notif, setNotif] = useState<Notif | null>(null);
   const supabase = createClient();
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
@@ -23,26 +30,58 @@ export default function SignUpForm() {
 
   function update(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
+  function showNotif(type: NotifType, message: string) {
+    setNotif({ type, message });
+    // Auto dismiss setelah 4 detik
+    setTimeout(() => setNotif(null), 4000);
+  }
+
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
+    setNotif(null);
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
-    if (!form.full_name) { toast.error('Nama Lengkap tidak boleh kosong'); return; }
-    if (!form.email) { toast.error('Email tidak boleh kosong'); return; }
-    if (!emailRegex.test(form.email)) { toast.error('Format email tidak valid'); return; }
-    if (form.password !== form.confirm) { toast.error('Password tidak cocok'); return; }
-    if (form.password.length < 8) { toast.error('Password minimal 8 karakter'); return; }
+    if (!form.full_name) { showNotif('error', 'Nama Lengkap tidak boleh kosong'); return; }
+    if (!form.email) { showNotif('error', 'Email tidak boleh kosong'); return; }
+    if (!emailRegex.test(form.email)) { showNotif('error', 'Format email tidak valid'); return; }
+    if (form.password !== form.confirm) { showNotif('error', 'Password tidak cocok'); return; }
+    if (form.password.length < 8) { showNotif('error', 'Password minimal 8 karakter'); return; }
     
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email: form.email, password: form.password,
       options: { data: { full_name: form.full_name, role: 'user' } },
     });
-    if (error) { toast.error(error.message); setLoading(false); return; }
-    toast.success('Pendaftaran berhasil!');
+    if (error) { showNotif('error', error.message); setLoading(false); return; }
+    showNotif('success', 'Pendaftaran berhasil!');
     setDone(true);
     setLoading(false);
   }
+
+  // Konfigurasi tampilan per tipe notifikasi
+  const notifConfig = {
+    success: {
+      icon: <CheckCircle2 size={16} className="flex-shrink-0" />,
+      bg: 'bg-green-50 dark:bg-green-950/40',
+      border: 'border-green-200 dark:border-green-800',
+      text: 'text-green-800 dark:text-green-200',
+      iconColor: 'text-green-600 dark:text-green-400',
+    },
+    error: {
+      icon: <AlertCircle size={16} className="flex-shrink-0" />,
+      bg: 'bg-red-50 dark:bg-red-950/40',
+      border: 'border-red-200 dark:border-red-800',
+      text: 'text-red-800 dark:text-red-200',
+      iconColor: 'text-red-500 dark:text-red-400',
+    },
+    warning: {
+      icon: <MailWarning size={16} className="flex-shrink-0" />,
+      bg: 'bg-amber-50 dark:bg-amber-950/40',
+      border: 'border-amber-200 dark:border-amber-800',
+      text: 'text-amber-800 dark:text-amber-200',
+      iconColor: 'text-amber-500 dark:text-amber-400',
+    },
+  };
 
   if (done) return (
     <div className="w-full max-w-[420px] animate-bounce-in">
@@ -66,20 +105,8 @@ export default function SignUpForm() {
 
   return (
     <>
-      {/* Notifikasi Container */}
-      <ToastContainer
-        position="top-center"
-        limit={3}
-        autoClose={4000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        draggable
-        pauseOnHover
-      />
-
       {loading && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/20 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--bg)]/80 backdrop-blur-sm">
           <Loader />
         </div>
       )}
@@ -93,6 +120,34 @@ export default function SignUpForm() {
               <h2 className="font-display font-bold text-lg mt-3" style={{ color: 'var(--text)' }}>
                 Buat Akun Baru
               </h2>
+            </div>
+
+            {/* ✅ NOTIFIKASI INLINE — di dalam card, tidak keluar garis */}
+            <div
+              className={`
+                                overflow-hidden transition-all duration-300 ease-in-out
+                                ${notif ? 'max-h-20 opacity-100 mb-4' : 'max-h-0 opacity-0 mb-0'}
+                            `}
+            >
+              {notif && (() => {
+                const cfg = notifConfig[notif.type!];
+                return (
+                  <div className={`
+                                        flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border text-sm
+                                        ${cfg.bg} ${cfg.border} ${cfg.text}
+                                    `}>
+                    <span className={cfg.iconColor}>{cfg.icon}</span>
+                    <span className="flex-1 leading-snug">{notif.message}</span>
+                    <button
+                      onClick={() => setNotif(null)}
+                      className={`flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity ${cfg.iconColor}`}
+                      aria-label="Tutup notifikasi"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             <form onSubmit={handleRegister} className="space-y-4">
@@ -111,12 +166,10 @@ export default function SignUpForm() {
                   </label>
                   <input type="email" value={form.email} onChange={e => update('email', e.target.value)}
                     className="input-field" placeholder="Masukan alamat email" required autoComplete="email" />
-                  {form.email && (
-                    <div className="mt-1.5 flex items-center gap-1.5 text-xs">
-                      <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 ${emailValid ? 'bg-green-500' : 'border border-[var(--border)]'}`}>
-                        {emailValid && <Check size={9} className="text-white" />}
-                      </div>
-                      <span className={emailValid ? 'text-green-600' : 'text-[var(--text-muted)]'}>Format email valid</span>
+                  {form.email && !emailValid && (
+                    <div className="mt-1.5 flex items-center gap-1 text-xs text-red-500">
+                      <AlertCircle size={12} />
+                      <span>Masukan email dengan benar</span>
                     </div>
                   )}
                 </div>
@@ -137,12 +190,10 @@ export default function SignUpForm() {
                       {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
-                  {form.password && (
-                    <div className="mt-1.5 flex items-center gap-1.5 text-xs">
-                      <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 ${passwordLengthValid ? 'bg-green-500' : 'border border-[var(--border)]'}`}>
-                        {passwordLengthValid && <Check size={9} className="text-white" />}
-                      </div>
-                      <span className={passwordLengthValid ? 'text-green-600' : 'text-[var(--text-muted)]'}>Minimal 8 karakter</span>
+                  {form.password && !passwordLengthValid && (
+                    <div className="mt-1.5 flex items-center gap-1 text-xs text-red-500">
+                      <AlertCircle size={12} />
+                      <span>Password minimal 8 karakter, mengandung huruf kecil, huruf besar, angka dan simbol</span>
                     </div>
                   )}
                 </div>
@@ -161,12 +212,10 @@ export default function SignUpForm() {
                       {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
-                  {form.confirm && (
-                    <div className="mt-1.5 flex items-center gap-1.5 text-xs">
-                      <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 ${passwordMatch ? 'bg-green-500' : 'border border-[var(--border)]'}`}>
-                        {passwordMatch && <Check size={9} className="text-white" />}
-                      </div>
-                      <span className={passwordMatch ? 'text-green-600' : 'text-[var(--text-muted)]'}>Password cocok</span>
+                  {form.confirm && !passwordMatch && (
+                    <div className="mt-1.5 flex items-center gap-1 text-xs text-red-500">
+                      <AlertCircle size={12} />
+                      <span>Ulangi kata sandi</span>
                     </div>
                   )}
                 </div>

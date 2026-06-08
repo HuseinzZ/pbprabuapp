@@ -17,7 +17,7 @@ import { createClient } from "@/lib/supabase/client";
 import Loader from "@/components/shared/Loader";
 import DatePicker from "@/components/form/DatePicker";
 import { useRouter, useSearchParams, usePathname, useParams } from "next/navigation";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft, Save } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -377,32 +377,36 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
             </div>
 
             {/* Footer buttons */}
-            <div className="flex items-center gap-3 mt-6 modal-footer sm:justify-end pt-4 border-t border-gray-100 dark:border-gray-800">
-              {selectedEvent && (
+            <div className="flex items-center justify-between gap-3 mt-6 modal-footer pt-4 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={() => router.push(`/admin/calendar/delete/${selectedEvent.extendedProps?.dbId || selectedEvent.id}`)}
+                  onClick={handleCloseModal}
                   disabled={isLoading}
                   type="button"
-                  className="flex w-full justify-center px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-sm sm:w-auto"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 sm:w-auto w-full"
                 >
-                  Hapus
+                  <ArrowLeft className="w-4 h-4" />
+                  Kembali
                 </button>
-              )}
-              <button
-                onClick={handleCloseModal}
-                disabled={isLoading}
-                type="button"
-                className="flex w-full justify-center px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 sm:w-auto"
-              >
-                Tutup
-              </button>
+                {selectedEvent && (
+                  <button
+                    onClick={() => router.push(`/admin/calendar/delete/${selectedEvent.extendedProps?.dbId || selectedEvent.id}`)}
+                    disabled={isLoading}
+                    type="button"
+                    className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-sm sm:w-auto w-full"
+                  >
+                    Hapus
+                  </button>
+                )}
+              </div>
               <button
                 onClick={handleAddOrUpdateEvent}
                 disabled={isLoading || !eventTitle.trim()}
                 type="button"
-                className="flex w-full justify-center px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-sm sm:w-auto"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-sm sm:w-auto w-full"
               >
-                {isSaving ? "Menyimpan..." : selectedEvent ? "Simpan Perubahan" : "Tambah Event"}
+                <Save className="w-4 h-4" />
+                {isSaving ? "Menyimpan..." : "Simpan"}
               </button>
             </div>
           </div>

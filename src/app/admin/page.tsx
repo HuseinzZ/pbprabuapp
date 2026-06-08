@@ -1,76 +1,299 @@
 import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import React from 'react';
-import { Users2, Trophy, Users } from 'lucide-react';
+import {
+  Users2, Trophy, Swords, CheckCircle2, Clock, Zap,
+  TrendingUp, Medal, Calendar, Activity
+} from 'lucide-react';
+import Link from 'next/link';
+import { MatchStatusDonut, TopPlayersBar, MatchesPerDayLine } from '@/components/dashboard/DashboardCharts';
 
 export const metadata: Metadata = {
   title: 'Dashboard Admin | PB Prabu',
   description: 'Ringkasan data PB Prabu Bandung',
 };
 
+function StatCard({
+  label, value, icon, color, sub
+}: {
+  label: string;
+  value: number | string;
+  icon: React.ReactNode;
+  color: string;
+  sub?: string;
+}) {
+  return (
+    <div className="p-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-[0_2px_16px_0_rgba(0,0,0,0.04)] dark:shadow-none flex items-start gap-4 hover:-translate-y-0.5 transition-transform duration-200">
+      <div className={`p-3 rounded-xl shrink-0 ${color}`}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{label}</p>
+        <p className="text-3xl font-bold mt-1 text-gray-900 dark:text-white tabular-nums">{value}</p>
+        {sub && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
 export default async function AdminDashboard() {
   const supabase = await createClient();
 
-  // Fetch counts secara asinkron menggunakan Promise.all untuk paralelisme
+  // ── Core counts ─────────────────────────────────────────────────────────────
   const [
-    { count: countUsers },
     { count: countPlayers },
     { count: countTournaments },
-    { count: countMatches }
+    { count: countMatches },
+    { count: countOngoing },
   ] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('players').select('*', { count: 'exact', head: true }),
     supabase.from('tournaments').select('*', { count: 'exact', head: true }),
-    supabase.from('matches').select('*', { count: 'exact', head: true })
+    supabase.from('matches').select('*', { count: 'exact', head: true }),
+    supabase.from('tournaments').select('*', { count: 'exact', head: true }).eq('status', 'ongoing'),
   ]);
 
-  // Pemetaan manual untuk menghindari dynamic class pada Tailwind CSS
-  const stats = [
-    { label: 'Total User (Akun)', value: countUsers || 0, icon: Users, bgColorLight: 'bg-blue-50', textLight: 'text-blue-600', bgDark: 'dark:bg-blue-500/10', textDark: 'dark:text-blue-400' },
-    { label: 'Total Pemain (Registrasi)', value: countPlayers || 0, icon: Users2, bgColorLight: 'bg-orange-50', textLight: 'text-orange-600', bgDark: 'dark:bg-orange-500/10', textDark: 'dark:text-orange-400' },
-    { label: 'Turnamen (Total)', value: countTournaments || 0, icon: Trophy, bgColorLight: 'bg-green-50', textLight: 'text-green-600', bgDark: 'dark:bg-green-500/10', textDark: 'dark:text-green-400' },
-    { label: 'Pertandingan Dimainkan', value: countMatches || 0, icon: Trophy, bgColorLight: 'bg-purple-50', textLight: 'text-purple-600', bgDark: 'dark:bg-purple-500/10', textDark: 'dark:text-purple-400' },
-  ];
+  // ── Match statuses ───────────────────────────────────────────────────────────
+  const [
+    { count: matchScheduled },
+    { count: matchOngoing },
+    { count: matchCompleted },
+  ] = await Promise.all([
+    supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'scheduled'),
+    supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'ongoing'),
+    supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+  ]);
+
+  // ── Recent tournaments ───────────────────────────────────────────────────────
+  const { data: recentTournaments } = await supabase
+    .from('tournaments')
+    .select('id, name, status, start_date')
+    .order('start_date', { ascending: false })
+    .limit(5);
+
+  // ── Recent completed matches ─────────────────────────────────────────────────
+  const { data: recentMatches } = await supabase
+    .from('matches')
+    .select(`
+      id, phase, group_name, match_number, score_team1, score_team2, status,
+      teams_team1:teams!team1_id(name),
+      teams_team2:teams!team2_id(name),
+      tournaments(name)
+    `)
+    .eq('status', 'completed')
+    .order('updated_at', { ascending: false })
+    .limit(6);
+
+  // ── Top players by ranking_points ───────────────────────────────────────────
+  const { data: topPlayers } = await supabase
+    .from('players')
+    .select('id, full_name, nickname, ranking_points')
+    .order('ranking_points', { ascending: false })
+    .limit(8);
+
+  // ── Matches per day (last 7 days) ─────────────────────────────────────────
+  const { data: matchDates } = await supabase
+    .from('matches')
+    .select('updated_at, status')
+    .eq('status', 'completed')
+    .order('updated_at', { ascending: true })
+    .limit(200);
+
+  // Group by date (local)
+  const dayMap: Record<string, number> = {};
+  (matchDates ?? []).forEach((m: any) => {
+    const d = new Date(m.updated_at);
+    const key = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+    dayMap[key] = (dayMap[key] ?? 0) + 1;
+  });
+  const dayKeys = Object.keys(dayMap).slice(-10);
+  const dayCounts = dayKeys.map(k => dayMap[k]);
+
+  // ── Derived chart data ─────────────────────────────────────────────────────
+  const playerNames = (topPlayers ?? []).map((p: any) =>
+    p.nickname ? `${p.full_name} (${p.nickname})` : p.full_name
+  );
+  const playerPoints = (topPlayers ?? []).map((p: any) => p.ranking_points ?? 0);
+
+  // ── Status badge ────────────────────────────────────────────────────────────
+  const STATUS_MAP: Record<string, { label: string; cls: string }> = {
+    ongoing: { label: 'Berlangsung', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400' },
+    completed: { label: 'Selesai', cls: 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400' },
+    cancelled: { label: 'Dibatalkan', cls: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' },
+    scheduled: { label: 'Dijadwalkan', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400' },
+  };
+
+  const PHASE_LABEL: Record<string, string> = {
+    RR: 'Grup',
+    SF: 'Semi Final',
+    F: 'Final',
+    '3RD': 'Juara 3',
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Dashboard Overview</h2>
-        <p className="text-sm text-gray-500 mt-1">Ringkasan statistik real-time dari database Supabase Anda.</p>
+    <div className="space-y-6 pb-8">
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Dashboard</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Ringkasan statistik real-time PB Prabu Bandung</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, i) => {
-          const Icon = stat.icon;
-          return (
-            <div key={i} className="p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-[0_4px_20px_0_rgba(0,0,0,0.03)] dark:shadow-none flex flex-col justify-between hover:-translate-y-1 transition-transform duration-300">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.label}</p>
-                  <h3 className="text-3xl font-bold mt-3 text-gray-900 dark:text-white">{stat.value}</h3>
-                </div>
-                <div className={`p-3.5 ${stat.bgColorLight} ${stat.bgDark} ${stat.textLight} ${stat.textDark} rounded-xl`}>
-                  <Icon size={24} strokeWidth={2} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      {/* ── Stat Cards ─────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Pemain"
+          value={countPlayers ?? 0}
+          icon={<Users2 className="w-5 h-5 text-brand-500" />}
+          color="bg-brand-50 dark:bg-brand-500/10"
+        />
+        <StatCard
+          label="Total Turnamen"
+          value={countTournaments ?? 0}
+          icon={<Trophy className="w-5 h-5 text-amber-500" />}
+          color="bg-amber-50 dark:bg-amber-500/10"
+          sub={`${countOngoing ?? 0} sedang berlangsung`}
+        />
+        <StatCard
+          label="Total Pertandingan"
+          value={countMatches ?? 0}
+          icon={<Swords className="w-5 h-5 text-purple-500" />}
+          color="bg-purple-50 dark:bg-purple-500/10"
+        />
+        <StatCard
+          label="Pertandingan Selesai"
+          value={matchCompleted ?? 0}
+          icon={<CheckCircle2 className="w-5 h-5 text-green-500" />}
+          color="bg-green-50 dark:bg-green-500/10"
+          sub={`${matchScheduled ?? 0} dijadwalkan · ${matchOngoing ?? 0} berlangsung`}
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <div className="p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-          <h3 className="font-bold text-gray-800 dark:text-white mb-4">Statistik Database Tersambung</h3>
-          <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4">
-            Semua metrik di atas dihitung dengan query ringan (head: true) yang ditarik langsung (real-time) melalui server-side rendering pada Next.js ke database Supabase PB Prabu Anda.
-          </p>
+      {/* ── Charts Row 1 ───────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Donut - Match Status */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-[0_2px_16px_0_rgba(0,0,0,0.04)] dark:shadow-none">
+          <div className="flex items-center gap-2 mb-1">
+            <Activity className="w-4 h-4 text-gray-400" />
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Status Pertandingan</h3>
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Distribusi status semua pertandingan</p>
+          <MatchStatusDonut
+            scheduled={matchScheduled ?? 0}
+            ongoing={matchOngoing ?? 0}
+            completed={matchCompleted ?? 0}
+          />
         </div>
 
-        <div className="p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col justify-center">
-          <h3 className="font-bold text-gray-800 dark:text-white mb-4">Navigasi Admin</h3>
-          <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-            Gunakan sidebar di sebelah kiri untuk masuk ke menu Manajemen User (merender tabel <code className="text-red-500">profiles</code>), Manajemen Pemain (merender tabel <code className="text-red-500">players</code>), dan seterusnya. Jika ingin membuat CRUD, disarankan untuk memisahkan rute-rutenya sesuai kaidah App Router (seperti `/admin/profiles/page.tsx`).
-          </p>
+        {/* Line/Area - Matches per day */}
+        <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-[0_2px_16px_0_rgba(0,0,0,0.04)] dark:shadow-none">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="w-4 h-4 text-gray-400" />
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Pertandingan Selesai per Hari</h3>
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Tren pertandingan selesai (10 hari terakhir)</p>
+          {dayKeys.length > 0 ? (
+            <MatchesPerDayLine dates={dayKeys} counts={dayCounts} />
+          ) : (
+            <div className="h-[230px] flex items-center justify-center text-sm text-gray-400">
+              Belum ada pertandingan selesai
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Charts Row 2 + Tables ──────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Top Players Bar */}
+        <div className="lg:col-span-3 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-[0_2px_16px_0_rgba(0,0,0,0.04)] dark:shadow-none">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <Medal className="w-4 h-4 text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Top 8 Pemain</h3>
+            </div>
+            <Link href="/admin/players" className="text-xs text-brand-500 hover:underline">Lihat semua →</Link>
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Berdasarkan ranking poin tertinggi</p>
+          {playerNames.length > 0 ? (
+            <TopPlayersBar names={playerNames} points={playerPoints} />
+          ) : (
+            <div className="h-[220px] flex items-center justify-center text-sm text-gray-400">
+              Belum ada data pemain
+            </div>
+          )}
+        </div>
+
+        {/* Recent Tournaments */}
+        <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-[0_2px_16px_0_rgba(0,0,0,0.04)] dark:shadow-none flex flex-col">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Turnamen Terbaru</h3>
+            </div>
+            <Link href="/admin/tournaments" className="text-xs text-brand-500 hover:underline">Lihat semua →</Link>
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">5 turnamen terakhir</p>
+          <div className="space-y-2 flex-1">
+            {(recentTournaments ?? []).length === 0 && (
+              <p className="text-sm text-gray-400 py-6 text-center">Belum ada turnamen</p>
+            )}
+            {(recentTournaments ?? []).map((t: any) => {
+              const s = STATUS_MAP[t.status] ?? { label: t.status, cls: 'bg-gray-100 text-gray-600' };
+              return (
+                <div key={t.id} className="flex items-start justify-between gap-2 p-3 rounded-xl bg-gray-50 dark:bg-white/[0.03] hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{t.name}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {new Date(t.start_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.cls}`}>{s.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Recent Completed Matches ───────────────────────────────────────────── */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-[0_2px_16px_0_rgba(0,0,0,0.04)] dark:shadow-none">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Swords className="w-4 h-4 text-gray-400" />
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Pertandingan Terakhir Selesai</h3>
+          </div>
+          <Link href="/admin/matches" className="text-xs text-brand-500 hover:underline">Lihat semua →</Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          {(recentMatches ?? []).length === 0 && (
+            <p className="text-sm text-gray-400 col-span-3 text-center py-6">Belum ada pertandingan selesai</p>
+          )}
+          {(recentMatches ?? []).map((m: any) => {
+            const t1 = m.teams_team1?.name ?? 'Tim 1';
+            const t2 = m.teams_team2?.name ?? 'Tim 2';
+            const s1 = m.score_team1 ?? 0;
+            const s2 = m.score_team2 ?? 0;
+            const t1Win = s1 > s2;
+            const t2Win = s2 > s1;
+            const phase = PHASE_LABEL[m.phase] ?? m.phase;
+            return (
+              <div key={m.id} className="p-3.5 rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.05]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                    {phase}{m.group_name ? ` · Grup ${m.group_name}` : ''} · M{m.match_number}
+                  </span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-600 truncate max-w-[120px]">{m.tournaments?.name}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className={`text-xs font-semibold truncate flex-1 text-left ${t1Win ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>{t1}</p>
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    <span className={`text-lg font-bold tabular-nums ${t1Win ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>{s1}</span>
+                    <span className="text-gray-300 dark:text-gray-600 font-light">—</span>
+                    <span className={`text-lg font-bold tabular-nums ${t2Win ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>{s2}</span>
+                  </div>
+                  <p className={`text-xs font-semibold truncate flex-1 text-right ${t2Win ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>{t2}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

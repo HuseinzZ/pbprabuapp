@@ -261,7 +261,7 @@ export default function GalleryForm({ galleryId, initialData }: GalleryFormProps
         />
       </div>
       <div className="flex items-end">
-        <div className="flex items-center justify-between w-full p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        <div className="flex items-center justify-between w-full py-1 px-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <div className="mr-2">
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Publikasikan</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Tampil di galeri publik</p>
@@ -281,12 +281,12 @@ export default function GalleryForm({ galleryId, initialData }: GalleryFormProps
 
   const Footer = ({ onSave, canSave }: { onSave: () => void; canSave: boolean }) => (
     <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
         <button
           type="button"
           onClick={handleBack}
           disabled={isProcessing}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
         >
           {navigating ? (
             <><ArrowLeft className="w-4 h-4 animate-pulse" /> Kembali...</>
@@ -296,19 +296,19 @@ export default function GalleryForm({ galleryId, initialData }: GalleryFormProps
         </button>
         {isEdit && (
           <button type="button" onClick={() => setShowDelete(true)} disabled={isProcessing}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-medium transition-colors disabled:opacity-50">
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-medium transition-colors disabled:opacity-50">
             <Trash2 className="w-4 h-4" /> Hapus Foto
           </button>
         )}
       </div>
       <button type="button" onClick={onSave} disabled={isProcessing || !canSave}
-        className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-sm">
+        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-sm">
         <Save className="w-4 h-4" />
         {saving
           ? uploadProgress.total > 1
             ? `Mengupload ${uploadProgress.done}/${uploadProgress.total}...`
             : "Menyimpan..."
-          : isEdit ? "Simpan Perubahan" : `Simpan ${photos.length > 1 ? `${photos.length} Foto` : "Foto"}`}
+          : "Simpan"}
       </button>
     </div>
   );

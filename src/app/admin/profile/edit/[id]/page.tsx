@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 export default async function EditProfile({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = await params;
     return (
-        <div>
-            <PageBreadcrumb pageTitle="Edit Profile" />
+        <div className="space-y-6">
+            <PageBreadcrumb pageTitle="Edit Profile" paths={[{ name: "Profile", href: "/admin/profile" }]} />
             <div className="space-y-6">
                 <EditProfileForm userId={resolvedParams.id} />
             </div>

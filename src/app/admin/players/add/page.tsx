@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 
 export default function AddPlayerPage() {
   return (
-    <div>
-      <PageBreadcrumb pageTitle="Tambah Pemain" />
+    <div className="space-y-6">
+      <PageBreadcrumb pageTitle="Tambah Pemain" paths={[{ name: "Manajemen Pemain", href: "/admin/players" }]} />
       <PlayerForm />
     </div>
   );

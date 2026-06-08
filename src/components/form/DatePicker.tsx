@@ -61,7 +61,7 @@ export default function DatePicker({
   }, [value]);
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       {/* Input asli — flatpickr akan menyembunyikannya dan menampilkan altInput */}
       <input
         ref={inputRef}

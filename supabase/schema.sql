@@ -430,7 +430,7 @@ CREATE OR REPLACE FUNCTION public.update_player_rankings()
 RETURNS VOID AS $$
 BEGIN
   WITH ranked AS (
-    SELECT id, RANK() OVER (ORDER BY ranking_points DESC) AS new_rank
+    SELECT id, DENSE_RANK() OVER (ORDER BY ranking_points DESC) AS new_rank
     FROM public.players WHERE is_active = true
   )
   UPDATE public.players p
