@@ -23,9 +23,9 @@ export default function GroupStandingsTable({ groupName, standings, allComplete 
       {/* Header */}
       <div className="px-4 py-2.5 border-b border-gray-100 dark:border-white/[0.05] flex items-center justify-between bg-gray-50 dark:bg-gray-800/50">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md flex items-center justify-center text-white text-[10px] font-bold bg-brand-500">
+          {/* <div className="w-6 h-6 rounded-md flex items-center justify-center text-white text-[10px] font-bold bg-brand-500">
             {groupName}
-          </div>
+          </div> */}
           <span className="font-semibold text-xs text-gray-900 dark:text-white">
             Klasemen Grup {groupName}
           </span>
@@ -45,15 +45,15 @@ export default function GroupStandingsTable({ groupName, standings, allComplete 
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-100 dark:border-white/[0.05]">
-              <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 dark:text-gray-400 w-8">#</th>
-              <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 dark:text-gray-400">Tim</th>
-              <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 dark:text-gray-400">Main</th>
-              <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 dark:text-gray-400">M</th>
-              <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 dark:text-gray-400">S</th>
-              <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 dark:text-gray-400">K</th>
-              <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 dark:text-gray-400">SG</th>
-              <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 font-bold">Poin</th>
+            <tr className="bg-slate-50 dark:bg-gray-800/50 border-b border-slate-200 dark:border-gray-800">
+              <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none w-10">NO.</th>
+              <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none">TIM</th>
+              <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none">MAIN</th>
+              <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none">M</th>
+              <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none">S</th>
+              <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none">K</th>
+              <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none">SG</th>
+              <th className="px-4 py-3 text-center text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest select-none">POIN</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-white/[0.03]">

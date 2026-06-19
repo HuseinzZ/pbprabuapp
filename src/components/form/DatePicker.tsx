@@ -10,6 +10,7 @@ interface DatePickerProps {
   onChange?: (date: string) => void;
   placeholder?: string;
   maxDate?: string;
+  className?: string;
 }
 
 const INPUT_CLASS = "w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pr-10 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30";
@@ -20,6 +21,7 @@ export default function DatePicker({
   onChange,
   placeholder = "Pilih tanggal",
   maxDate,
+  className,
 }: DatePickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const fpRef = useRef<flatpickr.Instance | null>(null);
@@ -32,7 +34,7 @@ export default function DatePicker({
       dateFormat: "Y-m-d",
       altInput: true,
       altFormat: "d F Y",
-      altInputClass: INPUT_CLASS,
+      altInputClass: className || INPUT_CLASS,
       defaultDate: value || undefined,
       maxDate,
       allowInput: false,

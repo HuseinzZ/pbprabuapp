@@ -12,6 +12,12 @@ const Loader = () => {
 }
 
 const StyledWrapper = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
   .loader {
    position: relative;
    width: 2.5em;
@@ -81,10 +87,6 @@ const StyledWrapper = styled.div`
    }
   }
 
-  .loader {
-   position: absolute;
-   top: calc(50% - 1.25em);
-   left: calc(50% - 1.25em);
-  }`;
+`;
 
 export default Loader;

@@ -3,7 +3,7 @@ import {
   type MatchRow,
   type TeamRow,
   type PlayerRow,
-  type TournamentTypeConfig
+  type PointConfig
 } from "@/lib/utils/point-system";
 import { toast } from "react-toastify";
 
@@ -41,14 +41,14 @@ export async function autoDistributePoints(supabase: any, tournamentId: string, 
     // 2. Fetch tournament and point config
     const { data: tourData } = await supabase
       .from("tournaments")
-      .select("*, tournament_types(*)")
+      .select("*, points(*)")
       .eq("id", tournamentId)
       .single();
 
-    if (!tourData || !tourData.tournament_types) {
+    if (!tourData || !tourData.points) {
       return false; // No point config
     }
-    const pointConfig = tourData.tournament_types as TournamentTypeConfig;
+    const pointConfig = tourData.points as PointConfig;
 
     // 3. Fetch all matches, teams, players
     const { data: matchesData } = await supabase
@@ -64,18 +64,11 @@ export async function autoDistributePoints(supabase: any, tournamentId: string, 
     const matches = (matchesData ?? []) as MatchRow[];
     const teams = (teamsData ?? []) as TeamRow[];
 
-    // 4. Check if tournament is decided (has finished Final or all RR finished)
+    // 4. Check if tournament is decided (has finished Final)
     const hasFinal = matches.some((m) => m.phase === "F" && m.status === "completed");
-    const activeTeams = teams.filter((t) => !t.is_bye_team);
-    const groups = [...new Set(activeTeams.map((t) => t.group_name).filter(Boolean) as string[])];
     
-    const allRRComplete = groups.length > 0 && groups.every((g) => {
-      const rrMatches = matches.filter((m) => (m.phase === "RR" || !m.phase) && m.group_name === g && !m.is_bye);
-      return rrMatches.length > 0 && rrMatches.every((m) => m.status === "completed");
-    });
-
-    const isDecided = hasFinal || allRRComplete;
-    if (!isDecided) return false;
+    const isDecided = hasFinal;
+    if (!isDecided && !force) return false;
 
     // 5. Fetch Players
     const playerIds = [
@@ -87,15 +80,15 @@ export async function autoDistributePoints(supabase: any, tournamentId: string, 
     if (playerIds.length === 0) return false;
 
     const { data: playersData } = await supabase
-      .from("players")
-      .select("id, full_name, nickname, avatar_url, ranking_points")
+      .from("profile")
+      .select("id, fullname, username, avatar_url, ranking_points")
       .in("id", playerIds);
 
     const playerMap: Record<string, PlayerRow> = {};
     (playersData ?? []).forEach((p: PlayerRow) => { playerMap[p.id] = p; });
 
     // 6. Build Point Entries
-    const entries = buildPointEntries(matches, teams, playerMap, pointConfig);
+    const entries = buildPointEntries(matches, teams, playerMap, pointConfig, force);
     if (entries.length === 0) return false;
 
     // 7. Insert Point Histories and Update Players
@@ -143,7 +136,7 @@ export async function autoDistributePoints(supabase: any, tournamentId: string, 
  * Recalculate and synchronize ranking_points for all players from point_histories
  * Returns true if successful, false otherwise.
  */
-export async function syncAllPlayerPoints(supabase: any): Promise<boolean> {
+export async function syncAllPlayerPoints(supabase: any, silent: boolean = false): Promise<boolean> {
   try {
     // 1. Get sum of points_earned for each player from point_histories
     const { data: histories, error: hErr } = await supabase
@@ -152,7 +145,7 @@ export async function syncAllPlayerPoints(supabase: any): Promise<boolean> {
 
     if (hErr) {
       console.error("Failed to fetch point histories:", hErr);
-      toast.error("Gagal mengambil riwayat poin: " + hErr.message);
+      if (!silent) toast.error("Gagal mengambil riwayat poin: " + hErr.message);
       return false;
     }
 
@@ -164,44 +157,87 @@ export async function syncAllPlayerPoints(supabase: any): Promise<boolean> {
 
     // 2. Get all players to update their points if there is a mismatch
     const { data: players, error: pErr } = await supabase
-      .from("players")
+      .from("profile")
       .select("id, ranking_points");
 
     if (pErr) {
       console.error("Failed to fetch players:", pErr);
-      toast.error("Gagal mengambil data pemain: " + pErr.message);
+      if (!silent) toast.error("Gagal mengambil data pemain: " + pErr.message);
       return false;
     }
 
     // 3. Prepare updates for players with mismatched points
-    const updates = [];
+    const updateTasks: (() => Promise<any>)[] = [];
     for (const p of (players || [])) {
       const correctPoints = totals[p.id] || 0;
       if (p.ranking_points !== correctPoints) {
-        updates.push(
-          supabase
-            .from("players")
+        const playerId = p.id;
+        updateTasks.push(async () => {
+          await supabase
+            .from("profile")
             .update({ ranking_points: correctPoints })
-            .eq("id", p.id)
-        );
+            .eq("id", playerId);
+        });
       }
     }
 
-    if (updates.length > 0) {
+    if (updateTasks.length > 0) {
       // Execute all updates
-      await Promise.all(updates);
-      console.log(`Synchronized points for ${updates.length} players.`);
+      await Promise.all(updateTasks.map((fn) => fn()));
+      console.log(`Synchronized points for ${updateTasks.length} players.`);
     }
 
-    // 4. Update player global rankings
-    const { error: rpcErr } = await supabase.rpc("update_player_rankings");
-    if (rpcErr) {
-      console.error("RPC error updating rankings:", rpcErr);
-      toast.error("Gagal memperbarui peringkat pemain: " + rpcErr.message);
+    // 4. Update player global rankings (JS equivalent of RPC)
+    try {
+      const { data: allProfiles, error: fetchErr } = await supabase
+        .from("profile")
+        .select("id, ranking_points, ranking_position")
+        .order("ranking_points", { ascending: false });
+
+      if (fetchErr) throw fetchErr;
+
+      if (allProfiles) {
+        let currentRank = 1;
+        let previousPoints = -1;
+        let actualPosition = 1;
+        
+        const rankUpdateTasks: (() => Promise<any>)[] = [];
+
+        for (let i = 0; i < allProfiles.length; i++) {
+          const profile = allProfiles[i];
+          const points = profile.ranking_points || 0;
+
+          if (points !== previousPoints) {
+            currentRank = actualPosition;
+            previousPoints = points;
+          }
+
+          if (profile.ranking_position !== currentRank) {
+            const profileId = profile.id;
+            const newRank = currentRank;
+            rankUpdateTasks.push(async () => {
+              await supabase
+                .from("profile")
+                .update({ ranking_position: newRank })
+                .eq("id", profileId);
+            });
+          }
+          
+          actualPosition++;
+        }
+
+        if (rankUpdateTasks.length > 0) {
+          await Promise.all(rankUpdateTasks.map((fn) => fn()));
+          console.log(`Updated rankings for ${rankUpdateTasks.length} players.`);
+        }
+      }
+    } catch (rankErr: any) {
+      console.error("Error updating rankings in JS:", rankErr);
+      if (!silent) toast.error("Gagal memperbarui peringkat pemain: " + rankErr.message);
       return false;
     }
 
-    toast.success(`Berhasil mensinkronisasi poin untuk semua pemain!`);
+    if (!silent) toast.success(`Berhasil mensinkronisasi poin untuk semua pemain!`);
     return true;
   } catch (error) {
     console.error("Failed to sync all player points", error);

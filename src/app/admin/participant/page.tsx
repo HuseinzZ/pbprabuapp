@@ -5,14 +5,15 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Participant, FilterParticipantStatus } from "./types";
 
-import ParticipantTable from "@/components/participant/ParticipantTable";
-import ParticipantFilters from "@/components/participant/ParticipantFilters";
-import DeleteParticipantModal from "@/components/participant/DeleteParticipantModal";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import Loader from "@/components/shared/Loader";
+import SummaryStats from "@/components/participant/SummaryStats";
+import ParticipantMasterDetail from "@/components/participant/ParticipantMasterDetail";
+import SecurityAndAuditPanel from "@/components/participant/SecurityAndAuditPanel";
+import { toast } from "react-toastify";
 import ExportButtons from "@/components/common/ExportButtons";
+import { exportCSV, exportJSON, exportPDF } from "@/lib/utils/export";
 import PrintReport, { PrintColumn } from "@/components/common/PrintReport";
-import { exportCSV, exportPDF } from "@/lib/utils/export";
 
 // ─── Content ──────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,38 @@ function ParticipantContent() {
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Participant | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [logs, setLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+    const storedLogs = localStorage.getItem('manajemen_peserta_logs');
+    if (storedLogs) {
+      try {
+        setLogs(JSON.parse(storedLogs));
+      } catch (err) {
+        setLogs([]);
+      }
+    }
+  }, []);
+
+  const addLog = useCallback((actionText: string, type: string) => {
+    const newLog = {
+      id: `log-${Date.now()}`,
+      action: actionText,
+      timestamp: new Date().toISOString(),
+      type
+    };
+    setLogs((prev) => {
+      const updatedLogs = [...prev, newLog].slice(-50);
+      localStorage.setItem('manajemen_peserta_logs', JSON.stringify(updatedLogs));
+      return updatedLogs;
+    });
+  }, []);
+
+  const handleClearLogs = useCallback(() => {
+    setLogs([]);
+    localStorage.removeItem('manajemen_peserta_logs');
+    toast.success("Log aktivitas sesi berhasil dibersihkan!");
+  }, []);
 
   const updateParams = useCallback((updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -53,138 +86,96 @@ function ParticipantContent() {
     return () => clearTimeout(t);
   }, [localSearch, urlSearch, updateParams]);
 
-  // Fetch tournaments for filter dropdown
+  // Fetch tournaments
   useEffect(() => {
     supabase
       .from("tournaments")
-      .select("id, name")
-      .order("start_date", { ascending: false })
-      .then(({ data }) => setTournaments(data ?? []));
+      .select("*")
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setTournaments(data as any ?? []));
   }, [supabase]);
 
   const fetchParticipants = useCallback(async () => {
     setLoading(true);
-    let query = supabase
+    const { data } = await supabase
       .from("tournament_participants")
-      .select("*, players(full_name, nickname, email, phone, avatar_url, level, ranking_points), tournaments(name, status, start_date)")
+      .select("*, profile(fullname, username, avatar_url, level, ranking_points), tournaments(name, status, start_date)")
       .order("registered_at", { ascending: false });
 
-    if (urlStatus !== "all") query = query.eq("status", urlStatus);
-    if (urlTournamentId) query = query.eq("tournament_id", urlTournamentId);
-    if (urlDate) query = query.gte("tournaments.start_date", urlDate);
-
-    const { data } = await query;
     setParticipants((data as Participant[]) ?? []);
     setLoading(false);
-  }, [urlStatus, urlTournamentId, urlDate, supabase]);
+  }, [supabase]);
 
   useEffect(() => { fetchParticipants(); }, [fetchParticipants]);
 
-  async function handleDelete() {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
-    await supabase.from("tournament_participants").delete().eq("id", deleteTarget.id);
-    setIsDeleting(false);
-    setDeleteTarget(null);
-    fetchParticipants();
-  }
-
-  const filtered = participants.filter((p) => {
-    const name = p.players?.full_name ?? "";
-    const nickname = p.players?.nickname ?? "";
-    const q = urlSearch.toLowerCase();
-    return name.toLowerCase().includes(q) || nickname.toLowerCase().includes(q);
-  });
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / urlPageSize));
-  const paginated = filtered.slice((urlPage - 1) * urlPageSize, urlPage * urlPageSize);
-
-  const printColumns: PrintColumn[] = [
-    { key: "no", label: "No", width: "5%" },
-    { key: "name", label: "Nama Pemain", width: "25%" },
-    { key: "tournament", label: "Turnamen", width: "30%" },
-    { key: "status", label: "Status", width: "20%", align: "center" },
-    { key: "registeredAt", label: "Tanggal Daftar", width: "20%" },
-  ];
-
-  const printGroups = [
-    {
-      name: `Daftar Peserta (${filtered.length} Orang)`,
-      rows: filtered.map((p, i) => ({
-        no: i + 1,
-        name: p.players?.full_name ?? "-",
-        tournament: p.tournaments?.name ?? "-",
-        status: p.status,
-        registeredAt: new Date(p.registered_at).toLocaleString("id-ID"),
-      })),
-    },
-  ];
-
   return (
     <div className="space-y-6">
-      <PageBreadcrumb pageTitle="Peserta Turnamen" />
-
-      <div className="flex items-end justify-end gap-3">
-        <ExportButtons
-          disabled={loading}
-          onExportCSV={() =>
-            exportCSV(
+      <div className="flex flex-col gap-4">
+        <PageBreadcrumb pageTitle="Peserta Turnamen" />
+        <div className="flex items-center justify-end">
+          <ExportButtons
+            disabled={loading || participants.length === 0}
+            onExportCSV={() => exportCSV(
               "peserta_turnamen.csv",
-              ["No", "Nama Pemain", "Turnamen", "Status", "Tanggal Daftar"],
-              filtered.map((p, i) => [
-                i + 1,
-                p.players?.full_name ?? "-",
-                p.tournaments?.name ?? "-",
-                p.status,
-                new Date(p.registered_at).toLocaleString("id-ID"),
+              ["No", "Turnamen", "Nama Peserta", "Level Ranking", "Poin", "Status", "Tanggal Daftar"],
+              participants.map((p, i) => [
+                i + 1, 
+                p.tournaments?.name || "-", 
+                p.profile?.fullname || "-", 
+                p.profile?.level || "-", 
+                p.profile?.ranking_points || 0,
+                p.status || "-",
+                p.registered_at ? new Date(p.registered_at).toLocaleDateString("id-ID") : "-"
               ])
-            )
-          }
-          onExportPDF={() => exportPDF("print-participants", "Peserta_Turnamen.pdf")}
-        />
+            )}
+            onExportJSON={() => exportJSON("peserta_turnamen.json", participants.map((p) => ({
+              id: p.id,
+              tournament_name: p.tournaments?.name || "-",
+              fullname: p.profile?.fullname || "-",
+              level: p.profile?.level || "-",
+              ranking_points: p.profile?.ranking_points || 0,
+              status: p.status || "-",
+              registered_at: p.registered_at ? new Date(p.registered_at).toLocaleDateString("id-ID") : "-"
+            })))}
+            onExportPDF={() => exportPDF("print-participant", "Peserta_Turnamen.pdf")}
+          />
+        </div>
       </div>
 
-      <ParticipantFilters
-        search={localSearch}
-        setSearch={setLocalSearch}
-        status={urlStatus}
-        setStatus={(v) => updateParams({ status: v, page: "1" })}
-        tournamentDate={urlDate}
-        setTournamentDate={(v) => updateParams({ date: v || null, page: "1" })}
-        tournamentId={urlTournamentId}
-        setTournamentId={(v) => updateParams({ tournament_id: v || null, page: "1" })}
-        tournaments={tournaments}
-        pageSize={urlPageSize}
-        setPageSize={(v) => updateParams({ size: v.toString(), page: "1" })}
+      <SummaryStats participants={participants} />
+
+      <ParticipantMasterDetail 
+        tournaments={tournaments as any}
+        participants={participants}
+        fetchParticipants={fetchParticipants}
+        onAddLog={addLog}
       />
 
-      <ParticipantTable
-        loading={loading}
-        participants={paginated}
-        currentPage={urlPage}
-        pageSize={urlPageSize}
-        totalPages={totalPages}
-        totalItems={filtered.length}
-        statusFilter={urlStatus}
-        onPageChange={(p) => updateParams({ page: p.toString() })}
-        onEdit={(p) => router.push(`/admin/participant/edit/${p.id}`)}
-        onDelete={(p) => setDeleteTarget(p)}
-      />
-
-      <DeleteParticipantModal
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={handleDelete}
-        participant={deleteTarget}
-        isDeleting={isDeleting}
-      />
+      <SecurityAndAuditPanel logs={logs} />
 
       <PrintReport
-        title="Daftar Peserta Turnamen PB Prabu"
-        subtitle={urlTournamentId ? tournaments.find(t => t.id === urlTournamentId)?.name : "Semua Turnamen"}
-        columns={printColumns}
-        groups={printGroups}
-        printId="print-participants"
+        title="Daftar Peserta Turnamen"
+        subtitle="Data Peserta PB Prabu"
+        columns={[
+          { label: "No", key: "no", width: "10%" },
+          { label: "Turnamen", key: "tournament", width: "25%" },
+          { label: "Nama Peserta", key: "fullname", width: "25%" },
+          { label: "Level", key: "level", width: "15%" },
+          { label: "Poin", key: "points", width: "10%" },
+          { label: "Status", key: "status", width: "15%" },
+        ]}
+        groups={[{
+          name: "Semua Peserta",
+          rows: participants.map((p, i) => ({
+            no: i + 1,
+            tournament: p.tournaments?.name || "-",
+            fullname: p.profile?.fullname || "-",
+            level: p.profile?.level || "-",
+            points: p.profile?.ranking_points || 0,
+            status: p.status || "-",
+          }))
+        }]}
+        printId="print-participant"
       />
     </div>
   );

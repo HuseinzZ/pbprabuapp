@@ -10,13 +10,13 @@ import Button from "@/components/ui/button/Button";
 import Loader from "@/components/shared/Loader";
 import PointHistoryFilters from "@/components/point-histories/PointHistoryFilters";
 import PointHistoryTable, { type PointEntry } from "@/components/point-histories/PointHistoryTable";
-import { exportCSV, exportPDF } from "@/lib/utils/export";
+import { exportCSV, exportPDF, exportJSON } from "@/lib/utils/export";
 import PrintReport, { PrintColumn } from "@/components/common/PrintReport";
 import {
   computeFinalPositions,
   getPointsFromPosition,
   buildPointEntries,
-  type TournamentTypeConfig as TournamentType,
+  type PointConfig as Point,
   type MatchRow,
   type TeamRow,
   type PlayerRow
@@ -25,7 +25,9 @@ import {
 interface Tournament {
   id: string;
   name: string;
-  tournament_types: TournamentType | null;
+  start_date?: string;
+  created_at?: string;
+  points: Point | null;
 }
 function getTierLabel(position: number): string {
   if (position === 1) return "Juara 1";
@@ -59,10 +61,8 @@ function PointHistoriesContent() {
   const urlTournament = searchParams.get("tournament") || "";
   const urlSearch = searchParams.get("search") || "";
   
-  // Default to today
-  const today = new Date();
-  const defaultDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const urlTournamentDate = searchParams.has("date") ? searchParams.get("date") || "" : defaultDate;
+  const urlTournamentDate = searchParams.has("date") ? searchParams.get("date") || "" : "";
+  const urlSort = searchParams.get("sort") || "points-desc";
   const [localSearch, setLocalSearch] = useState(urlSearch);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [entries, setEntries] = useState<PointEntry[]>([]);
@@ -92,9 +92,10 @@ function PointHistoriesContent() {
   useEffect(() => {
     let query = supabase
       .from("tournaments")
-      .select("id, name, tournament_types(*)")
+      .select("id, name, start_date, created_at, points(*)")
       .neq("status", "cancelled")
-      .order("start_date", { ascending: false });
+      .order("start_date", { ascending: false })
+      .order("created_at", { ascending: false });
     if (urlTournamentDate) {
       const [year, month, day] = urlTournamentDate.split("-");
       if (year && month && day) {
@@ -110,6 +111,9 @@ function PointHistoriesContent() {
         // Auto-select the first (latest) tournament available
         const params = new URLSearchParams(window.location.search);
         params.set("tournament", list[0].id);
+        if (!urlTournamentDate && list[0].start_date) {
+          params.set("date", list[0].start_date.split("T")[0]);
+        }
         router.replace(`${pathname}?${params.toString()}`);
       }
     });
@@ -121,7 +125,7 @@ function PointHistoriesContent() {
     if (!urlTournament) { setEntries([]); return; }
     setLoading(true);
     const selectedTournament = tournaments.find((t) => t.id === urlTournament);
-    const pointConfig = selectedTournament?.tournament_types;
+    const pointConfig = selectedTournament?.points;
     if (!pointConfig) {
       toast.error("Tipe turnamen tidak memiliki konfigurasi poin.");
       setLoading(false);
@@ -149,8 +153,8 @@ function PointHistoriesContent() {
     let playerMap: Record<string, PlayerRow> = {};
     if (playerIds.length > 0) {
       const { data: playersData, error: playerErr } = await supabase
-        .from("players")
-        .select("id, full_name, nickname, avatar_url, ranking_points")
+        .from("profile")
+        .select("id, fullname, username, avatar_url, ranking_points")
         .in("id", playerIds);
       if (playerErr) { toast.error(playerErr.message); setLoading(false); return; }
       playerMap = Object.fromEntries((playersData ?? []).map((p: PlayerRow) => [p.id, p]));
@@ -191,12 +195,33 @@ function PointHistoriesContent() {
       setSyncing(false);
     }
   };
-  // Filter by search
-  const filtered = entries.filter((e) => {
-    if (!urlSearch) return true;
-    const q = urlSearch.toLowerCase();
-    return e.playerName.toLowerCase().includes(q) || (e.partnerName ?? "").toLowerCase().includes(q);
-  });
+  // Filter and Sort
+  const filtered = useMemo(() => {
+    let result = entries.filter((e) => {
+      if (!urlSearch) return true;
+      const q = urlSearch.toLowerCase();
+      return e.playerName.toLowerCase().includes(q) || (e.partnerName ?? "").toLowerCase().includes(q);
+    });
+
+    result.sort((a, b) => {
+      if (urlSort === "points-desc") {
+        if (b.points !== a.points) return b.points - a.points;
+        return a.position - b.position; // jika poin sama, posisi 1 di atas
+      }
+      if (urlSort === "points-asc") {
+        if (a.points !== b.points) return a.points - b.points;
+        return b.position - a.position; // jika poin sama, posisi 8 di atas
+      }
+      if (urlSort === "name-asc") return a.playerName.localeCompare(b.playerName);
+      if (urlSort === "name-desc") return b.playerName.localeCompare(a.playerName);
+      
+      // Default: points-desc with position fallback
+      if (b.points !== a.points) return b.points - a.points;
+      return a.position - b.position;
+    });
+
+    return result;
+  }, [entries, urlSearch, urlSort]);
   // Summary
   const totalPlayers = new Set(entries.map((e) => e.playerId)).size;
   const totalPointsDistributed = entries.reduce((sum, e) => sum + e.points, 0);
@@ -204,9 +229,10 @@ function PointHistoriesContent() {
 
   const printColumns: PrintColumn[] = [
     { key: "no", label: "No", width: "5%" },
-    { key: "player", label: "Pemain", width: "30%" },
-    { key: "partner", label: "Partner", width: "30%" },
-    { key: "tier", label: "Capaian", width: "20%", align: "center" },
+    { key: "player", label: "Pemain", width: "25%" },
+    { key: "partner", label: "Partner", width: "25%" },
+    { key: "group", label: "Grup", width: "15%", align: "center" },
+    { key: "tier", label: "Capaian", width: "15%", align: "center" },
     { key: "points", label: "Poin", width: "15%", align: "center" },
   ];
 
@@ -217,6 +243,7 @@ function PointHistoriesContent() {
         no: i + 1,
         player: e.playerName,
         partner: e.partnerName ?? "-",
+        group: e.groupName,
         tier: e.tier ?? "-",
         points: e.points,
       })),
@@ -232,34 +259,51 @@ function PointHistoriesContent() {
           onExportCSV={() =>
             exportCSV(
               "riwayat-poin.csv",
-              ["No", "Pemain", "Partner", "Capaian", "Poin"],
+              ["No", "Pemain", "Partner", "Grup", "Capaian", "Poin"],
               filtered.map((e, i) => [
                 i + 1,
                 e.playerName,
                 e.partnerName ?? "-",
+                e.groupName,
                 e.tier ?? "-",
                 e.points,
               ])
             )
           }
+          onExportJSON={() => 
+            exportJSON(
+              "riwayat-poin.json",
+              filtered.map((e, i) => ({
+                no: i + 1,
+                pemain: e.playerName,
+                partner: e.partnerName ?? "-",
+                grup: e.groupName,
+                capaian: e.tier ?? "-",
+                poin: e.points,
+              }))
+            )
+          }
           onExportPDF={() => exportPDF("print-points", "Riwayat_Poin.pdf")}
         />
       </div>
-      {/* Filters */}
-      <PointHistoryFilters
-        tournaments={tournaments}
-        tournamentId={urlTournament}
-        onTournamentChange={(val) => updateParams({ tournament: val || null, search: null })}
-        search={localSearch}
-        onSearchChange={setLocalSearch}
-        date={urlTournamentDate}
-        onDateChange={(val) => updateParams({ date: val, tournament: null, search: null })}
-      />
+      <section className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl shadow-sm flex flex-col overflow-hidden">
+        {/* Filters */}
+        <PointHistoryFilters
+          tournaments={tournaments}
+          tournamentId={urlTournament}
+          onTournamentChange={(val) => updateParams({ tournament: val || null, search: null })}
+          search={localSearch}
+          onSearchChange={setLocalSearch}
+          date={urlTournamentDate}
+          onDateChange={(val) => updateParams({ date: val, tournament: null, search: null })}
+          sort={urlSort}
+          onSortChange={(val) => updateParams({ sort: val !== "points-desc" ? val : null })}
+        />
       {/* Summary cards */}
       {/* {urlTournament && !loading && entries.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <SummaryCard
-            label="Total Pemain"
+            label="Total Pengguna"
             value={totalPlayers}
             icon={<Users className="w-4 h-4 text-brand-600 dark:text-brand-400" />}
             color="bg-brand-50 dark:bg-brand-500/10"
@@ -290,25 +334,11 @@ function PointHistoriesContent() {
       )}
       {/* Table */}
       {urlTournament && (
-        <>
-          <div className="flex items-center justify-between mt-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white">Detail Riwayat Poin</h3>
-            {/* {hasFinalCompleted && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSyncPoints}
-                disabled={syncing}
-                className="gap-2"
-              >
-                <RefreshCcw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                {syncing ? 'Menyinkronkan...' : 'Sinkronisasi Poin (Paksa)'}
-              </Button>
-            )} */}
-          </div>
+        <div className="border-t border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900">
           <PointHistoryTable loading={loading} entries={filtered} />
-        </>
+        </div>
       )}
+      </section>
 
       <PrintReport
         title="Riwayat Poin PB Prabu"

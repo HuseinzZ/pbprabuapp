@@ -71,3 +71,15 @@ export async function exportPDF(elementId: string, filename: string = "download.
     element.style.cssText = originalCssText;
   }
 }
+
+/** Download data sebagai file JSON */
+export function exportJSON(filename: string, data: any) {
+  const jsonString = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonString], { type: "application/json;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

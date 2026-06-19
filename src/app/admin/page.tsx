@@ -39,6 +39,17 @@ function StatCard({
 export default async function AdminDashboard() {
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  let userName = "Admin";
+  if (user) {
+    const { data: profile } = await supabase.from('profile').select('fullname').eq('id', user.id).single();
+    if (profile?.fullname) {
+      userName = profile.fullname;
+    } else if (user.user_metadata?.fullname) {
+      userName = user.user_metadata.fullname;
+    }
+  }
+
   // ── Core counts ─────────────────────────────────────────────────────────────
   const [
     { count: countPlayers },
@@ -46,7 +57,7 @@ export default async function AdminDashboard() {
     { count: countMatches },
     { count: countOngoing },
   ] = await Promise.all([
-    supabase.from('players').select('*', { count: 'exact', head: true }),
+    supabase.from('profile').select('*', { count: 'exact', head: true }),
     supabase.from('tournaments').select('*', { count: 'exact', head: true }),
     supabase.from('matches').select('*', { count: 'exact', head: true }),
     supabase.from('tournaments').select('*', { count: 'exact', head: true }).eq('status', 'ongoing'),
@@ -85,8 +96,8 @@ export default async function AdminDashboard() {
 
   // ── Top players by ranking_points ───────────────────────────────────────────
   const { data: topPlayers } = await supabase
-    .from('players')
-    .select('id, full_name, nickname, ranking_points')
+    .from('profile')
+    .select('id, fullname, username, ranking_points')
     .order('ranking_points', { ascending: false })
     .limit(8);
 
@@ -110,7 +121,7 @@ export default async function AdminDashboard() {
 
   // ── Derived chart data ─────────────────────────────────────────────────────
   const playerNames = (topPlayers ?? []).map((p: any) =>
-    p.nickname ? `${p.full_name} (${p.nickname})` : p.full_name
+    p.username ? `${p.fullname} (${p.username})` : p.fullname
   );
   const playerPoints = (topPlayers ?? []).map((p: any) => p.ranking_points ?? 0);
 
@@ -133,14 +144,14 @@ export default async function AdminDashboard() {
     <div className="space-y-6 pb-8">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Dashboard</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Ringkasan statistik real-time PB Prabu Bandung</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Selamat Datang, {userName}! 👋</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Berikut adalah ringkasan statistik real-time PB Prabu Bandung</p>
       </div>
 
       {/* ── Stat Cards ─────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Total Pemain"
+          label="Total Pengguna"
           value={countPlayers ?? 0}
           icon={<Users2 className="w-5 h-5 text-brand-500" />}
           color="bg-brand-50 dark:bg-brand-500/10"
@@ -209,7 +220,7 @@ export default async function AdminDashboard() {
               <Medal className="w-4 h-4 text-gray-400" />
               <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Top 8 Pemain</h3>
             </div>
-            <Link href="/admin/players" className="text-xs text-brand-500 hover:underline">Lihat semua →</Link>
+            <Link href="/admin/users" className="text-xs text-brand-500 hover:underline">Lihat semua →</Link>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Berdasarkan ranking poin tertinggi</p>
           {playerNames.length > 0 ? (

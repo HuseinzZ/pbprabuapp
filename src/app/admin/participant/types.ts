@@ -6,15 +6,15 @@ export type PaymentStatus = "unpaid" | "paid" | "refunded";
 export interface Participant {
   id: string;
   tournament_id: string | null;
-  player_id: string | null;
+  profile_id: string | null;
   status: ParticipantStatus | null;
   registered_at: string | null;
   payment_status: PaymentStatus | string | null;
   notes: string | null;
   // joined
-  players?: {
-    full_name: string;
-    nickname: string | null;
+  profile?: {
+    fullname: string;
+    username: string | null;
     email: string | null;
     phone: string | null;
     avatar_url: string | null;
@@ -79,8 +79,8 @@ export const STATUS_FILTER_OPTIONS: { value: FilterParticipantStatus; label: str
 
 export interface ParticipantFormData {
   tournament_id: string;
-  player_id: string;
-  player_ids: string[];
+  profile_id: string;
+  profile_ids: string[];
   status: ParticipantStatus;
   payment_status: string;
   notes: string;
@@ -88,8 +88,8 @@ export interface ParticipantFormData {
 
 export const INITIAL_FORM: ParticipantFormData = {
   tournament_id: "",
-  player_id: "",
-  player_ids: [],
+  profile_id: "",
+  profile_ids: [],
   status: "pending",
   payment_status: "unpaid",
   notes: "",

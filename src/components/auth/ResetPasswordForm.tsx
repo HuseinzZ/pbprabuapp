@@ -31,21 +31,9 @@ export default function ResetPasswordForm({ userId }: { userId?: string }) {
   }
 
   useEffect(() => {
-    async function checkUser() {
-      if (!userId) {
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", userId)
-        .single();
-      setLoading(false);
-    }
-    checkUser();
-  }, [supabase, userId]);
+    // Tidak perlu query DB — cukup pastikan session aktif
+    setLoading(false);
+  }, []);
 
   function showNotif(type: 'success' | 'error', message: string) {
     setNotif({ type, message });
@@ -90,17 +78,34 @@ export default function ResetPasswordForm({ userId }: { userId?: string }) {
 
     setSaving(true);
 
-    // Update password user yang sedang login
-    const { error } = await supabase.auth.updateUser({
-      password: password
-    });
-
-    if (error) {
-      showNotif('error', error.message || 'Gagal mengubah password');
+    if (userId) {
+      // Jika userId ada, gunakan API admin untuk update password user lain
+      const res = await fetch("/api/admin/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: userId, password: password }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        showNotif('error', result.error || 'Gagal mengubah password');
+      } else {
+        showNotif('success', 'Password berhasil diubah.');
+        setPassword('');
+        setConfirmPassword('');
+      }
     } else {
-      showNotif('success', 'Password berhasil diubah.');
-      setPassword('');
-      setConfirmPassword('');
+      // Update password user yang sedang login
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      });
+
+      if (error) {
+        showNotif('error', error.message || 'Gagal mengubah password');
+      } else {
+        showNotif('success', 'Password berhasil diubah.');
+        setPassword('');
+        setConfirmPassword('');
+      }
     }
 
     setSaving(false);

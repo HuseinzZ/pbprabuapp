@@ -7,53 +7,55 @@ export type TournamentStatus =
 
 export interface Tournament {
   id: string;
-  tournament_type_id: string | null;
+  points_id: string | null;
   name: string;
   description: string | null;
   location: string | null;
   start_date: string;
-  end_date: string;
   registration_deadline: string | null;
   max_participants: number | null;
   entry_fee: number;
   prize_pool: number;
   status: TournamentStatus;
+  match_format: 'tunggal' | 'ganda';
+  gender_category: 'putra' | 'putri' | 'campuran';
   poster_url: string | null;
   rules: string | null;
   created_by: string | null;
   created_at: string;
-  updated_at: string;
-  // joined from tournament_types
-  tournament_types?: { name: string } | null;
+  // joined from points
+  points?: { name: string } | null;
 }
 
 export interface TournamentFormData {
-  tournament_type_id: string;
+  points_id: string;
   name: string;
   description: string;
   location: string;
   start_date: string;
-  end_date: string;
   registration_deadline: string;
   max_participants: string;
   entry_fee: string;
   prize_pool: string;
   status: TournamentStatus;
+  match_format: 'tunggal' | 'ganda';
+  gender_category: 'putra' | 'putri' | 'campuran';
   rules: string;
 }
 
 export const INITIAL_FORM: TournamentFormData = {
-  tournament_type_id: "",
+  points_id: "",
   name: "",
   description: "",
   location: "",
   start_date: "",
-  end_date: "",
   registration_deadline: "",
   max_participants: "",
   entry_fee: "",
   prize_pool: "",
   status: "upcoming",
+  match_format: "ganda",
+  gender_category: "campuran",
   rules: "",
 };
 

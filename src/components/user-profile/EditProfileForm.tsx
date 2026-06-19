@@ -15,9 +15,8 @@ import { deleteStorageFile } from "@/lib/utils/storage";
 
 interface Profile {
   id: string;
-  full_name: string;
+  fullname: string;
   email: string | null;
-  phone: string | null;
   address: string | null;
   gender: string | null;
   birth_date: string | null;
@@ -26,6 +25,7 @@ interface Profile {
   height: number | null;
   hand_dominance: string | null;
   is_active: boolean;
+  user_id: string;
 }
 
 type NotifType = "success" | "error" | null;
@@ -47,16 +47,13 @@ export default function EditProfileForm({ userId }: { userId: string }) {
   function validateField(name: string, value: any) {
     let error = "";
     switch (name) {
-      case "full_name":
+      case "fullname":
         if (!value) error = "Nama lengkap wajib diisi";
         else if (value.length < 3) error = "Nama minimal 3 karakter";
         break;
       case "username":
         if (value && !/^[a-zA-Z0-9._]+$/.test(value)) error = "Hanya huruf, angka, titik, atau underscore";
         else if (value && value.length < 3) error = "Username minimal 3 karakter";
-        break;
-      case "phone":
-        if (value && !/^\+?[0-9]{10,15}$/.test(value)) error = "Nomor tidak valid (10-15 digit)";
         break;
       case "height":
         const h = parseInt(value);
@@ -89,14 +86,34 @@ export default function EditProfileForm({ userId }: { userId: string }) {
       setLoading(true);
 
       const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, phone, address, gender, birth_date, avatar_url, username, height, hand_dominance, is_active")
-        .eq("id", userId)
+        .from("profile")
+        .select(`
+          id, fullname, address, gender, birth_date, avatar_url, username, height, hand_dominance, is_active, user_id
+        `)
+        .eq("user_id", userId)
         .single();
 
+      // Ambil email dari auth session
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email || null;
+
       if (!error && data) {
-        setProfile(data as Profile);
-        setForm(data as Profile);
+        const mappedProfile: Profile = {
+          id: data.id,
+          user_id: data.user_id,
+          fullname: data.fullname || "",
+          address: data.address,
+          gender: data.gender,
+          birth_date: data.birth_date,
+          avatar_url: data.avatar_url,
+          username: data.username,
+          height: data.height,
+          hand_dominance: data.hand_dominance,
+          is_active: data.is_active ?? true,
+          email: userEmail,
+        };
+        setProfile(mappedProfile);
+        setForm(mappedProfile);
       }
       setLoading(false);
     }
@@ -109,7 +126,7 @@ export default function EditProfileForm({ userId }: { userId: string }) {
 
     setUploadingAvatar(true);
     const ext = file.name.split(".").pop();
-    const filePath = `${profile.id}/avatar.${ext}`;
+    const filePath = `${profile.id}/avatar_${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from("avatars")
@@ -125,7 +142,7 @@ export default function EditProfileForm({ userId }: { userId: string }) {
     const avatarUrl = `${publicUrl}?t=${Date.now()}`;
 
     const { error: updateError } = await supabase
-      .from("profiles")
+      .from("profile")
       .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
       .eq("id", profile.id);
 
@@ -146,7 +163,7 @@ export default function EditProfileForm({ userId }: { userId: string }) {
     if (!profile) return;
 
     const newErrors: Record<string, string> = {};
-    const fieldsToValidate = ["full_name", "username", "phone", "height", "address"];
+    const fieldsToValidate = ["fullname", "username", "height", "address"];
     fieldsToValidate.forEach(field => {
       const err = validateField(field, (form as any)[field]);
       if (err) newErrors[field] = err;
@@ -160,10 +177,9 @@ export default function EditProfileForm({ userId }: { userId: string }) {
     setSaving(true);
 
     const { error } = await supabase
-      .from("profiles")
+      .from("profile")
       .update({
-        full_name: form.full_name,
-        phone: form.phone || null,
+        fullname: form.fullname,
         address: form.address || null,
         gender: form.gender || null,
         birth_date: form.birth_date || null,
@@ -215,7 +231,7 @@ export default function EditProfileForm({ userId }: { userId: string }) {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-gray-400">
-                    {form.full_name?.charAt(0)?.toUpperCase() || "U"}
+                    {form.fullname?.charAt(0)?.toUpperCase() || "U"}
                   </div>
                 )}
               </div>
@@ -264,17 +280,17 @@ export default function EditProfileForm({ userId }: { userId: string }) {
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="col-span-1 md:col-span-2">
-                  <Label htmlFor="full_name">
+                  <Label htmlFor="fullname">
                     Nama Lengkap <span className="text-red-500">*</span>
                   </Label>
                   <InputField
-                    id="full_name"
+                    id="fullname"
                     type="text"
-                    value={form.full_name || ""}
-                    onChange={(e) => handleChange("full_name", e.target.value)}
+                    value={form.fullname || ""}
+                    onChange={(e) => handleChange("fullname", e.target.value)}
                     placeholder="Nama lengkap Anda"
-                    error={!!errors.full_name}
-                    hint={errors.full_name}
+                    error={!!errors.fullname}
+                    hint={errors.fullname}
                     required
                   />
                 </div>
@@ -300,19 +316,6 @@ export default function EditProfileForm({ userId }: { userId: string }) {
                     value={form.email || ""}
                     disabled
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm cursor-not-allowed opacity-70"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="phone">No. Telepon</Label>
-                  <InputField
-                    id="phone"
-                    type="tel"
-                    value={form.phone || ""}
-                    onChange={(e) => handleChange("phone", e.target.value)}
-                    placeholder="Masukan nomor telepon"
-                    error={!!errors.phone}
-                    hint={errors.phone}
                   />
                 </div>
 

@@ -25,27 +25,28 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const isAuthRoute = pathname.startsWith('/auth/login') || pathname.startsWith('/auth/register');
+  const isPrivateRoute = pathname.startsWith('/admin') || pathname.startsWith('/user');
 
-  // Jika tidak login dan bukan di halaman auth, lempar ke login
-  if (!user && !isAuthRoute) {
+  // Jika tidak login dan mencoba mengakses rute privat, lempar ke login
+  if (!user && isPrivateRoute) {
     return NextResponse.redirect(new URL('/auth/login', request.url));
   }
 
   // Jika sudah login
   if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
+    const { data: profileData } = await supabase
+      .from('profile')
       .select('role')
-      .eq('id', user.id)
+      .eq('user_id', user.id)
       .single();
 
     // Jangan izinkan akses halaman auth lagi jika sudah login
     if (isAuthRoute) {
-      return NextResponse.redirect(new URL(profile?.role === 'admin' ? '/admin' : '/', request.url));
+      return NextResponse.redirect(new URL(profileData?.role === 'admin' ? '/admin' : '/', request.url));
     }
 
     // Hanya admin yang bisa akses /admin dan sub-routenya
-    if (pathname.startsWith('/admin') && profile?.role !== 'admin') {
+    if (pathname.startsWith('/admin') && profileData?.role !== 'admin') {
       return NextResponse.redirect(new URL('/', request.url));
     }
   }

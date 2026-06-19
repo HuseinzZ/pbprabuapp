@@ -72,18 +72,12 @@ export default function PointHistoryTable({ loading, entries }: Props) {
     );
   }
 
-  // Group by group name
-  const groupedByGroup = entries.reduce<Record<string, PointEntry[]>>((acc, e) => {
-    const key = e.groupName;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(e);
-    return acc;
-  }, {});
+  const allComplete = entries.every(e => e.groupComplete);
 
   return (
     <div className="space-y-5">
       {loading ? (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+        <div className="w-full">
           <table className="w-full">
             <tbody>
               {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
@@ -91,134 +85,126 @@ export default function PointHistoryTable({ loading, entries }: Props) {
           </table>
         </div>
       ) : (
-        Object.entries(groupedByGroup)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([groupName, groupEntries]) => {
-            const groupComplete = groupEntries[0]?.groupComplete ?? false;
-            // Sort entries by position within group (deduplicate by position)
-            const sortedEntries = [...groupEntries].sort((a, b) => a.position - b.position);
+        <div className="w-full">
+          {/* Header */}
+          <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center gap-2.5">
+              <span className="font-semibold text-sm text-gray-900 dark:text-white">
+                Semua Grup
+              </span>
+            </div>
+            {!allComplete && (
+              <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                <AlertCircle className="w-3.5 h-3.5" />
+                Pertandingan belum selesai semua
+              </span>
+            )}
+          </div>
 
-            return (
-              <div
-                key={groupName}
-                className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
-              >
-                {/* Group Header */}
-                <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-800">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold bg-brand-500">
-                      {groupName}
-                    </div>
-                    <span className="font-semibold text-sm text-gray-900 dark:text-white">
-                      Grup {groupName}
-                    </span>
-                  </div>
-                  {!groupComplete && (
-                    <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      Pertandingan belum selesai semua
-                    </span>
-                  )}
-                </div>
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-gray-800/50 border-b border-slate-200 dark:border-gray-800">
+                  <th className="px-5 py-3 text-left text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none">POSISI</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none">PEMAIN</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none">PARTNER</th>
+                  <th className="px-5 py-3 text-center text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none">GRUP</th>
+                  <th className="px-5 py-3 text-center text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none">HASIL (M/K)</th>
+                  <th className="px-5 py-3 text-center text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest select-none">PENCAPAIAN</th>
+                  <th className="px-5 py-3 text-center text-[10px] font-bold text-brand-400 dark:text-brand-500 uppercase tracking-widest select-none">POIN</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {entries.map((entry, idx) => {
+                  const tierCfg = TIER_CONFIG[entry.tier] ?? TIER_CONFIG["Perempat Final"];
+                  const posIcon = POSITION_ICON[entry.position] ?? "";
 
-                {/* Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-100 dark:border-gray-800">
-                        <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Posisi</th>
-                        <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Pemain</th>
-                        <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Partner</th>
-                        <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Hasil (M/S/K)</th>
-                        <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Pencapaian</th>
-                        <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Poin</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {sortedEntries.map((entry, idx) => {
-                        const tierCfg = TIER_CONFIG[entry.tier] ?? TIER_CONFIG["Perempat Final"];
-                        const posIcon = POSITION_ICON[entry.position] ?? "";
+                  return (
+                    <tr
+                      key={`${entry.playerId}-${idx}`}
+                      className="transition-colors"
+                    >
+                      {/* Position */}
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{posIcon}</span>
+                          <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                            {entry.position}
+                          </span>
+                        </div>
+                      </td>
 
-                        return (
-                          <tr
-                            key={`${entry.playerId}-${idx}`}
-                            className="transition-colors"
+                      {/* Player */}
+                      <td className="px-5 py-4">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {entry.playerName}
+                        </p>
+                      </td>
+
+                      {/* Partner */}
+                      <td className="px-5 py-4">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {entry.partnerName ?? <span className="italic text-gray-300 dark:text-gray-600">—</span>}
+                        </p>
+                      </td>
+
+                      {/* Group */}
+                      <td className="px-5 py-4 text-center">
+                        <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-xs font-semibold text-gray-900 dark:bg-gray-800 dark:text-gray-300">
+                          {entry.groupName}
+                        </span>
+                      </td>
+
+                      {/* W/D/L */}
+                      <td className="px-5 py-4 text-center">
+                        <div className="inline-flex items-center justify-center gap-1 text-xs font-mono">
+                          <span className="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 font-semibold">
+                            {entry.wins} Menang
+                          </span>
+                          {entry.draws > 0 && (
+                            <span className="px-1.5 py-0.5 rounded bg-yellow-100 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 font-semibold">
+                              {entry.draws}S
+                            </span>
+                          )}
+                          <span className="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400 font-semibold">
+                            {entry.losses} Kalah
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Tier Badge */}
+                      <td className="px-5 py-4 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${tierCfg.bg} ${tierCfg.text} ${tierCfg.border}`}
+                        >
+                          <Medal className="w-3 h-3" />
+                          {entry.tier}
+                        </span>
+                      </td>
+
+                      {/* Points */}
+                      <td className="px-5 py-4 text-center">
+                        <div className="inline-flex flex-col items-center">
+                          <span
+                            className={`text-l font-bold tabular-nums ${
+                              entry.points > 0
+                                ? "text-brand-600 dark:text-brand-400"
+                                : "text-gray-400 dark:text-gray-600"
+                            }`}
                           >
-                            {/* Position */}
-                            <td className="px-5 py-4">
-                              <div className="flex items-center gap-2">
-                                <span className="text-base">{posIcon}</span>
-                                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
-                                  #{entry.position}
-                                </span>
-                              </div>
-                            </td>
-
-                            {/* Player */}
-                            <td className="px-5 py-4">
-                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                {entry.playerName}
-                              </p>
-                            </td>
-
-                            {/* Partner */}
-                            <td className="px-5 py-4">
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {entry.partnerName ?? <span className="italic text-gray-300 dark:text-gray-600">—</span>}
-                              </p>
-                            </td>
-
-                            {/* W/D/L */}
-                            <td className="px-5 py-4 text-center">
-                              <div className="inline-flex items-center gap-1 text-xs font-mono">
-                                <span className="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 font-semibold">
-                                  {entry.wins}M
-                                </span>
-                                {entry.draws > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-yellow-100 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 font-semibold">
-                                    {entry.draws}S
-                                  </span>
-                                )}
-                                <span className="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400 font-semibold">
-                                  {entry.losses}K
-                                </span>
-                              </div>
-                            </td>
-
-                            {/* Tier Badge */}
-                            <td className="px-5 py-4 text-center">
-                              <span
-                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${tierCfg.bg} ${tierCfg.text} ${tierCfg.border}`}
-                              >
-                                <Medal className="w-3 h-3" />
-                                {entry.tier}
-                              </span>
-                            </td>
-
-                            {/* Points */}
-                            <td className="px-5 py-4 text-center">
-                              <div className="inline-flex flex-col items-center">
-                                <span
-                                  className={`text-xl font-bold tabular-nums ${
-                                    entry.points > 0
-                                      ? "text-brand-600 dark:text-brand-400"
-                                      : "text-gray-400 dark:text-gray-600"
-                                  }`}
-                                >
-                                  {entry.points}
-                                </span>
-                                <span className="text-[10px] text-gray-400 dark:text-gray-600 -mt-0.5">poin</span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })
+                            {entry.points}
+                          </span>
+                          <span className="text-[10px] text-gray-400 dark:text-gray-600 -mt-0.5">poin</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );

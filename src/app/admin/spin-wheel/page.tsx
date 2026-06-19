@@ -2,15 +2,18 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { generateScheduleFromSpin, assignGroups } from '@/lib/match-engine';
+import { generateScheduleFromSpin, generateScheduleFromParticipants } from '@/lib/match-engine';
+import type { ParticipantSlot } from '@/lib/match-engine';
 import { syncTournamentStatuses } from '@/lib/utils/tournamentStatus';
 import { toast } from 'react-toastify';
 import {
   RotateCcw, Play, Trophy, Users, CheckCircle,
-  Loader2, RefreshCw, Calendar, ChevronRight, Info, AlertTriangle
+  Loader2, RefreshCw, Calendar, ChevronRight, Info, AlertTriangle, History, Sparkles, Terminal, Clock, Gift
 } from 'lucide-react';
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import { Modal } from "@/components/ui/modal/modal";
+import WheelCanvas from '@/app/(public)/spin-wheel/components/WheelCanvas';
+import { WheelSegment } from '@/app/(public)/spin-wheel/types';
 
 interface PlayerSlot { id: string; full_name: string; isBye?: boolean; level?: string | null; }
 interface Pair { p1: PlayerSlot; p2: PlayerSlot; }
@@ -25,11 +28,35 @@ interface SpinSession {
   schedule_generated: boolean;
 }
 
-const COLORS = [
-  '#ea580c','#3b82f6','#16a34a','#8b5cf6','#ec4899',
-  '#f59e0b','#14b8a6','#f43f5e','#06b6d4','#84cc16',
-  '#6366f1','#fb923c','#22d3ee','#a3e635','#e879f9',
-];
+const PALETTES = {
+  rainbow: [
+    { fill: "#f87171", text: "#ffffff" }, { fill: "#fb923c", text: "#ffffff" },
+    { fill: "#facc15", text: "#1e293b" }, { fill: "#4ade80", text: "#1e293b" },
+    { fill: "#2dd4bf", text: "#1e293b" }, { fill: "#60a5fa", text: "#ffffff" },
+    { fill: "#c084fc", text: "#ffffff" }, { fill: "#f472b6", text: "#ffffff" }
+  ],
+  neon: [
+    { fill: "#06b6d4", text: "#ffffff" }, { fill: "#ec4899", text: "#ffffff" },
+    { fill: "#a855f7", text: "#ffffff" }, { fill: "#10b981", text: "#ffffff" },
+    { fill: "#f59e0b", text: "#1e293b" }, { fill: "#e11d48", text: "#ffffff" }
+  ],
+  sunset: [
+    { fill: "#f43f5e", text: "#ffffff" }, { fill: "#f97316", text: "#ffffff" },
+    { fill: "#db2777", text: "#ffffff" }, { fill: "#fbbf24", text: "#1e293b" },
+    { fill: "#ca8a04", text: "#ffffff" }, { fill: "#e11d48", text: "#ffffff" }
+  ],
+  pastel: [
+    { fill: "#ffb7b2", text: "#3c2a21" }, { fill: "#ffd1b3", text: "#3c2a21" },
+    { fill: "#ffdac1", text: "#3c2a21" }, { fill: "#e2f0cb", text: "#3c2a21" },
+    { fill: "#b5ead7", text: "#3c2a21" }, { fill: "#c7ceea", text: "#3c2a21" },
+    { fill: "#ffc6ff", text: "#3c2a21" }
+  ],
+  cyberpunk: [
+    { fill: "#0f172a", text: "#38bdf8" }, { fill: "#1e293b", text: "#f43f5e" },
+    { fill: "#334155", text: "#a855f7" }, { fill: "#0f172a", text: "#4ade80" },
+    { fill: "#1e293b", text: "#f59e0b" }
+  ]
+};
 
 export default function AdminSpinWheelPage() {
   const [tournaments, setTournaments] = useState<any[]>([]);
@@ -42,9 +69,15 @@ export default function AdminSpinWheelPage() {
   const [step, setStep] = useState<'setup' | 'spin' | 'done'>('setup');
   const [useLevelRule, setUseLevelRule] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [winnerModal, setWinnerModal] = useState<PlayerSlot | null>(null);
+  const [selectedPaletteKey, setSelectedPaletteKey] = useState<keyof typeof PALETTES>('neon');
+  // Format turnamen yang sedang dipilih
+  const [matchFormat, setMatchFormat] = useState<'tunggal' | 'ganda'>('ganda');
+  const [genderCategory, setGenderCategory] = useState<'putra' | 'putri' | 'campuran'>('campuran');
+  const [isTunggalGenerated, setIsTunggalGenerated] = useState(false);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const currentAngle = useRef(0);
+  const [rotation, setRotation] = useState(0);
+  const currentAngleRef = useRef(0);
   const animRef = useRef<number>(undefined);
   const supabase = createClient();
 
@@ -52,7 +85,7 @@ export default function AdminSpinWheelPage() {
     async function init() {
       await syncTournamentStatuses();
       const { data } = await supabase.from('tournaments')
-        .select('id,name,status')
+        .select('id,name,status,match_format,gender_category')
         .eq('status', 'ongoing')
         .order('start_date');
       
@@ -61,6 +94,8 @@ export default function AdminSpinWheelPage() {
       
       if (list.length === 1 && !selectedTournament) {
         setSelectedTournament(list[0].id);
+        setMatchFormat(list[0].match_format || 'ganda');
+        setGenderCategory(list[0].gender_category || 'campuran');
       }
     }
     init();
@@ -69,11 +104,19 @@ export default function AdminSpinWheelPage() {
   useEffect(() => {
     if (!selectedTournament) return;
     supabase.from('tournament_participants')
-      .select('*, players(id,full_name,level)')
+      .select('*, profile(id,fullname,level)')
       .eq('tournament_id', selectedTournament)
       .eq('status', 'confirmed')
       .then(({ data }) => setParticipants(data || []));
-  }, [selectedTournament, supabase]);
+
+    if (matchFormat === 'tunggal') {
+      supabase.from('matches').select('id').eq('tournament_id', selectedTournament).limit(1).then(({ data }) => {
+        setIsTunggalGenerated(!!(data && data.length > 0));
+      });
+    } else {
+      setIsTunggalGenerated(false);
+    }
+  }, [selectedTournament, matchFormat, supabase]);
 
   const loadSession = useCallback(async () => {
     if (!selectedTournament) return;
@@ -106,65 +149,6 @@ export default function AdminSpinWheelPage() {
     return () => { supabase.removeChannel(channel); };
   }, [session?.id, supabase]);
 
-  const drawWheel = useCallback((angle: number, players: PlayerSlot[]) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
-    const W = canvas.width, H = canvas.height;
-    const cx = W / 2, cy = H / 2, r = Math.min(cx, cy) - 20;
-    ctx.clearRect(0, 0, W, H);
-
-    if (players.length === 0) {
-      ctx.fillStyle = '#16a34a20';
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fill();
-      ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 3; ctx.stroke();
-      ctx.fillStyle = '#16a34a'; ctx.font = 'bold 13px sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('Semua terpasang', cx, cy);
-      return;
-    }
-
-    const slice = (2 * Math.PI) / players.length;
-    players.forEach((p, i) => {
-      const origIdx = session?.initial_players?.findIndex(x => x.id === p.id) ?? i;
-      const colorIdx = origIdx >= 0 ? origIdx : i;
-      const start = angle + i * slice, end = start + slice;
-      ctx.beginPath(); ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, r, start, end); ctx.closePath();
-      ctx.fillStyle = COLORS[colorIdx % COLORS.length]; ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 2; ctx.stroke();
-
-      ctx.save(); ctx.translate(cx, cy); ctx.rotate(start + slice / 2);
-      ctx.textAlign = 'right';
-      const name = p.full_name.length > 14 ? p.full_name.slice(0, 13) + '…' : p.full_name;
-      const fs = players.length > 12 ? 9 : players.length > 8 ? 10 : 12;
-      ctx.font = `bold ${fs}px sans-serif`; ctx.fillStyle = '#fff';
-      ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 4;
-      ctx.fillText(name, r - 14, 4);
-      ctx.restore();
-    });
-
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-    ctx.strokeStyle = 'rgba(234,88,12,0.5)'; ctx.lineWidth = 6; ctx.stroke();
-
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 28);
-    grad.addColorStop(0, '#431407'); grad.addColorStop(1, '#7c2d12');
-    ctx.beginPath(); ctx.arc(cx, cy, 28, 0, 2 * Math.PI);
-    ctx.fillStyle = grad; ctx.fill();
-    ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 3; ctx.stroke();
-    ctx.font = '18px sans-serif'; ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle'; ctx.fillText('🏸', cx, cy);
-
-    // Pointer atas
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - r - 5);
-    ctx.lineTo(cx - 12, cy - r + 18);
-    ctx.lineTo(cx + 12, cy - r + 18);
-    ctx.closePath(); ctx.fillStyle = '#fff';
-    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 8;
-    ctx.fill();
-  }, [session?.initial_players]);
-
   const isOddSpin = (session?.spun_players?.length || 0) % 2 !== 0;
   const lastSpun = session?.spun_players?.[session.spun_players.length - 1];
 
@@ -177,27 +161,39 @@ export default function AdminSpinWheelPage() {
     return remaining;
   }, [session?.remaining_players, useLevelRule, isOddSpin, lastSpun]);
 
-  useEffect(() => {
-    drawWheel(currentAngle.current, currentCandidates);
-  }, [currentCandidates, drawWheel]);
+  const segments: WheelSegment[] = useMemo(() => {
+    const palette = PALETTES[selectedPaletteKey];
+    return currentCandidates.map((p, i) => {
+      const origIdx = session?.initial_players?.findIndex(x => x.id === p.id) ?? i;
+      const colorIdx = origIdx >= 0 ? origIdx : i;
+      const theme = palette[colorIdx % palette.length];
+      return {
+        id: p.id,
+        text: p.full_name,
+        weight: 1,
+        color: theme.fill,
+        textColor: theme.text
+      };
+    });
+  }, [currentCandidates, session?.initial_players, selectedPaletteKey]);
 
   async function handleStartSession() {
     if (participants.length < 2) {
       toast.error('Minimal 2 peserta terkonfirmasi');
       return;
     }
-    const players: PlayerSlot[] = participants.map(p => ({
-      id: p.players.id,
-      full_name: p.players.full_name,
-      level: p.players.level,
+    const profiles: PlayerSlot[] = participants.map(p => ({
+      id: p.profile?.id || '',
+      full_name: p.profile?.fullname || '',
+      level: p.profile?.level || null,
     }));
 
     const { data, error } = await supabase.from('spin_wheel_sessions')
       .upsert({
         tournament_id: selectedTournament,
         status: 'waiting',
-        initial_players: players,
-        remaining_players: players,
+        initial_players: profiles,
+        remaining_players: profiles,
         spun_players: [],
         pairs: [],
         schedule_generated: false,
@@ -224,19 +220,19 @@ export default function AdminSpinWheelPage() {
       }
     }
 
-    const extra = (Math.random() * 5 + 8) * Math.PI * 2;
-    const target = currentAngle.current + extra;
+    const extraSpins = 360 * 5 + Math.random() * 360;
+    const targetRotation = currentAngleRef.current + extraSpins;
     const dur = 4000;
     const startTime = performance.now();
-    const fromAngle = currentAngle.current;
+    const fromAngle = currentAngleRef.current;
 
     await new Promise<void>(resolve => {
       function frame(now: number) {
         const t = Math.min((now - startTime) / dur, 1);
         const ease = 1 - Math.pow(1 - t, 4);
-        const a = fromAngle + (target - fromAngle) * ease;
-        currentAngle.current = a;
-        drawWheel(a, candidates);
+        const a = fromAngle + (targetRotation - fromAngle) * ease;
+        currentAngleRef.current = a;
+        setRotation(a);
         if (t < 1) { animRef.current = requestAnimationFrame(frame); }
         else resolve();
       }
@@ -244,10 +240,11 @@ export default function AdminSpinWheelPage() {
     });
 
     // Tentukan pemain keluar
-    const slice = (2 * Math.PI) / candidates.length;
-    let theta = (1.5 * Math.PI - currentAngle.current) % (2 * Math.PI);
-    if (theta < 0) theta += 2 * Math.PI;
-    const idx = Math.floor(theta / slice) % candidates.length;
+    const totalSegments = candidates.length;
+    const sizePerSegment = 360 / totalSegments;
+    const normalizedRotation = currentAngleRef.current % 360;
+    const pointerWheelAngle = (270 - normalizedRotation + 360) % 360;
+    const idx = Math.floor(pointerWheelAngle / sizePerSegment) % totalSegments;
     const winner = candidates[idx];
 
     let newSpun = [...session.spun_players, winner];
@@ -291,7 +288,6 @@ export default function AdminSpinWheelPage() {
         remaining_players: newRemaining,
         pairs: newPairs,
         status: newStatus,
-        updated_at: new Date().toISOString(),
       })
       .eq('id', session.id)
       .select().single();
@@ -300,6 +296,7 @@ export default function AdminSpinWheelPage() {
     else {
       setSession(data as SpinSession);
       if (newStatus === 'done') setStep('done');
+      setWinnerModal(winner);
     }
     setSpinning(false);
   }
@@ -309,16 +306,20 @@ export default function AdminSpinWheelPage() {
     setGenerating(true);
     console.log('[Generate] session.pairs:', session.pairs);
     console.log('[Generate] tournament_id:', session.tournament_id, 'session_id:', session.id);
+    const mappedPairs = session.pairs.map(p => ({
+      p1: { id: p.p1.id, fullname: p.p1.full_name, isBye: p.p1.isBye, level: p.p1.level },
+      p2: { id: p.p2.id, fullname: p.p2.full_name, isBye: p.p2.isBye, level: p.p2.level }
+    }));
     const result = await generateScheduleFromSpin(
       session.tournament_id,
       session.id,
-      session.pairs
+      mappedPairs
     );
     console.log('[Generate] result:', result);
     if (result.success) {
       // Persist ke DB agar tidak reset saat reload
       await supabase.from('spin_wheel_sessions')
-        .update({ schedule_generated: true, updated_at: new Date().toISOString() })
+        .update({ schedule_generated: true })
         .eq('id', session.id);
       toast.success(`Jadwal dibuat! ${result.totalMatches} pertandingan terjadwal`);
       setSession(s => s ? { ...s, schedule_generated: true } : s);
@@ -333,7 +334,8 @@ export default function AdminSpinWheelPage() {
     if (!session) return;
     await supabase.from('spin_wheel_sessions').delete().eq('id', session.id);
     setSession(null); setStep('setup');
-    currentAngle.current = 0;
+    currentAngleRef.current = 0;
+    setRotation(0);
     setShowResetModal(false);
     toast.success('Sesi direset');
   }
@@ -344,6 +346,7 @@ export default function AdminSpinWheelPage() {
   }
 
   // Preview pembagian grup
+  const assignGroups = (teams: any[]): { groupName: string; matches: any[]; teams: any[] }[] => { return []; };
   const previewGroups = session?.pairs?.length && session.pairs.length > 4
     ? assignGroups(session.pairs.map((p, i) => ({
         p1: p.p1, p2: p.p2, spinOrder: i + 1,
@@ -351,6 +354,33 @@ export default function AdminSpinWheelPage() {
     : [];
     
   const isDirectKnockout = session?.pairs?.length ? session.pairs.length <= 2 : false;
+
+  // Compute match category from gender + format
+  const matchCategory = matchFormat === 'tunggal'
+    ? genderCategory === 'putra' ? 'tunggal_putra' : 'tunggal_putri'
+    : genderCategory === 'putra' ? 'ganda_putra'
+    : genderCategory === 'putri' ? 'ganda_putri'
+    : 'ganda_campuran';
+
+  async function handleGenerateForTunggal() {
+    setGenerating(true);
+    const slots: ParticipantSlot[] = participants.map(p => ({
+      playerId: p.profile?.id || '',
+      fullName: p.profile?.fullname || '',
+    }));
+    const result = await generateScheduleFromParticipants(
+      selectedTournament,
+      slots,
+      matchCategory
+    );
+    if (result.success) {
+      toast.success(`Jadwal tunggal dibuat! ${result.totalMatches} pertandingan terjadwal`);
+      setIsTunggalGenerated(true);
+    } else {
+      toast.error(result.error || 'Gagal membuat jadwal');
+    }
+    setGenerating(false);
+  }
 
   const tournament = tournaments.find(t => t.id === selectedTournament);
   const remainingCount = session?.remaining_players?.length || 0;
@@ -367,11 +397,39 @@ export default function AdminSpinWheelPage() {
             <div>
               <label className="block text-xs font-medium mb-1.5 text-gray-700 dark:text-gray-300">Turnamen</label>
               <select className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition cursor-pointer" value={selectedTournament}
-                onChange={e => setSelectedTournament(e.target.value)}>
+                onChange={e => {
+                  const tid = e.target.value;
+                  setSelectedTournament(tid);
+                  const t = tournaments.find(t => t.id === tid);
+                  if (t) {
+                    setMatchFormat(t.match_format || 'ganda');
+                    setGenderCategory(t.gender_category || 'campuran');
+                  }
+                }}>
                 <option value="">-- Pilih Turnamen --</option>
                 {tournaments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
+
+            {/* Badge format */}
+            {selectedTournament && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                  matchFormat === 'tunggal'
+                    ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300'
+                    : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
+                }`}>
+                  {matchFormat === 'tunggal' ? '🏃 Tunggal' : '👥 Ganda'}
+                </span>
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                  genderCategory === 'putra' ? 'bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300'
+                  : genderCategory === 'putri' ? 'bg-pink-100 dark:bg-pink-500/20 text-pink-700 dark:text-pink-300'
+                  : 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300'
+                }`}>
+                  {genderCategory === 'putra' ? '♂ Putra' : genderCategory === 'putri' ? '♀ Putri' : '⚥ Campuran'}
+                </span>
+              </div>
+            )}
 
             {selectedTournament && (
               <div>
@@ -398,22 +456,25 @@ export default function AdminSpinWheelPage() {
                 )}
 
                 <div className="space-y-1.5 max-h-48 overflow-y-auto pr-2">
-                  {participants.map((p, i) => (
+                  {participants.map((p, i) => {
+                    const palette = PALETTES[selectedPaletteKey];
+                    const theme = palette[i % palette.length];
+                    return (
                     <div key={p.id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
-                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                        style={{ background: COLORS[i % COLORS.length] }}>
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-sm"
+                        style={{ background: theme.fill, color: theme.text }}>
                         {i + 1}
                       </div>
                       <p className="text-xs font-medium text-gray-900 dark:text-white">
-                        {p.players?.full_name}
+                        {p.profile?.fullname}
                       </p>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
             )}
 
-            {selectedTournament && (
+            {selectedTournament && matchFormat !== 'tunggal' && (
               <div className="flex items-center gap-2 mt-4 px-3 py-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-100 dark:border-gray-800">
                 <input 
                   type="checkbox" 
@@ -429,9 +490,48 @@ export default function AdminSpinWheelPage() {
             )}
 
             {selectedTournament && participants.length >= 2 && (
-              <button onClick={handleStartSession} className="inline-flex items-center justify-center gap-2 px-4 py-2 w-full rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm">
-                <Play size={16} /> Mulai Sesi Spin Wheel
-              </button>
+              <>
+                {matchFormat === 'tunggal' ? (
+                  /* ─── TUNGGAL: tombol generate langsung ─── */
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2 px-3 py-3 rounded-xl bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 text-xs text-violet-700 dark:text-violet-300">
+                      <Info size={13} className="mt-0.5 flex-shrink-0" />
+                      <span>
+                        Format <strong>Tunggal</strong> — setiap peserta langsung dijadwalkan secara Round Robin.
+                        Spin Wheel tidak diperlukan.
+                      </span>
+                    </div>
+                    {isTunggalGenerated ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-center gap-2 py-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                          <CheckCircle size={18} className="text-green-600 dark:text-green-400" />
+                          <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                            Jadwal sudah di-generate
+                          </span>
+                        </div>
+                        <button onClick={() => setIsTunggalGenerated(false)} className="w-full inline-flex items-center gap-2 justify-center text-sm py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                          <RefreshCw size={14} /> Ulangi Generate
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleGenerateForTunggal}
+                        disabled={generating}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2 w-full rounded-xl bg-violet-500 hover:bg-violet-600 disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-sm"
+                      >
+                        {generating
+                          ? <><Loader2 size={15} className="animate-spin" /> Membuat jadwal...</>
+                          : <><Calendar size={15} /> Generate Jadwal Tunggal Otomatis</>}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  /* ─── GANDA: tombol mulai spin wheel ─── */
+                  <button onClick={handleStartSession} className="inline-flex items-center justify-center gap-2 px-4 py-2 w-full rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm">
+                    <Play size={16} /> Mulai Sesi Spin Wheel
+                  </button>
+                )}
+              </>
             )}
           </div>
 
@@ -471,21 +571,14 @@ export default function AdminSpinWheelPage() {
                 </div>
               </div>
 
-              <div className="relative">
-                <canvas ref={canvasRef} width={380} height={380}
-                  style={{ maxWidth: '100%', borderRadius: '50%', boxShadow: '0 0 60px rgba(234,88,12,0.25)' }} />
+              <div className="relative flex justify-center w-full">
+                <WheelCanvas
+                  segments={segments}
+                  rotation={rotation}
+                  isSpinning={spinning}
+                  soundEnabled={true}
+                />
               </div>
-
-              {isOddSpin && lastSpun && (
-                <div className="w-full px-4 py-3 rounded-xl text-center animate-fade-in bg-brand-50 dark:bg-brand-900/20 border border-dashed border-brand-500">
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    Pemain pertama dipilih — putar lagi untuk pasangannya:
-                  </p>
-                  <p className="font-display font-bold text-xl mt-1 text-brand-600 dark:text-brand-400">
-                    {lastSpun.full_name}
-                  </p>
-                </div>
-              )}
 
               {remainingCount > 0 ? (
                 <button onClick={handleSpin} disabled={spinning}
@@ -511,16 +604,21 @@ export default function AdminSpinWheelPage() {
                 </p>
                 <Users size={14} className="text-gray-500 dark:text-gray-400" />
               </div>
-              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                {session.remaining_players.map((p, i) => (
+              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 scrollbar-thin">
+                {session.remaining_players.map((p, i) => {
+                  const origIdx = session.initial_players.findIndex(x => x.id === p.id);
+                  const palette = PALETTES[selectedPaletteKey];
+                  const theme = palette[(origIdx >= 0 ? origIdx : i) % palette.length];
+                  return (
                   <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
                     <div className="w-3.5 h-3.5 rounded-full flex-shrink-0"
-                      style={{ background: COLORS[session.initial_players.findIndex(x => x.id === p.id) % COLORS.length] }} />
+                      style={{ background: theme.fill }} />
                     <span className="text-xs text-gray-900 dark:text-white">{p.full_name}</span>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
+
 
             <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between mb-3">
@@ -529,7 +627,7 @@ export default function AdminSpinWheelPage() {
                 </p>
                 <Trophy size={14} className="text-gray-500 dark:text-gray-400" />
               </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin">
                 {session.pairs.map((pair, i) => (
                   <div key={i} className="flex items-center gap-2 px-2 py-2 rounded-lg text-xs bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
                     <span className="font-bold w-4 text-center text-gray-500 dark:text-gray-400">{i + 1}</span>
@@ -540,6 +638,90 @@ export default function AdminSpinWheelPage() {
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* THEME COLOR PALETTE SELECTION */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-2xl shadow-sm">
+              <h2 className="font-display font-semibold text-xs uppercase tracking-wider text-blue-500 dark:text-blue-400 mb-3.5 flex items-center gap-2">
+                <Sparkles size={14} />
+                Aesthetic Skema Warna
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(PALETTES) as Array<keyof typeof PALETTES>).map((key) => {
+                  const paletteSlices = PALETTES[key].slice(0, 5);
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setSelectedPaletteKey(key)}
+                      className={`flex items-center gap-2 py-1.5 px-3 rounded-xl border transition-all truncate cursor-pointer ${
+                        selectedPaletteKey === key
+                          ? "bg-blue-500/10 border-blue-500/40 text-blue-600 dark:text-blue-300 font-bold"
+                          : "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
+                      }`}
+                    >
+                      <div className="flex -space-x-1 flex-shrink-0">
+                        {paletteSlices.map((color, cIdx) => (
+                          <div
+                            key={cIdx}
+                            className="w-3.5 h-3.5 rounded-full border border-gray-900 dark:border-slate-950"
+                            style={{ backgroundColor: color.fill }}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs capitalize">{key}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* LIVE WINNERS FEED (Log Pemain Terpilih) - ACTIVITY LOGS STYLE */}
+            <div 
+              id="activity-logs-panel"
+              className="bg-white dark:bg-gray-900 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm overflow-hidden flex flex-col max-h-[350px]"
+            >
+              <div className="p-4 bg-slate-50 dark:bg-gray-800/50 border-b border-slate-200 dark:border-gray-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                  <h4 className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">LOG PEMAIN TERPILIH</h4>
+                </div>
+                <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">{session.spun_players.length} Pemain</span>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
+                {session.spun_players.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center space-y-2">
+                    <Clock className="w-8 h-8 text-slate-300 dark:text-gray-600" />
+                    <p className="text-xs text-slate-400 dark:text-gray-500 font-medium">Belum ada aktivitas di sesi ini.</p>
+                  </div>
+                ) : (
+                  [...session.spun_players].reverse().map((p, idx) => {
+                    const origIdx = session.initial_players.findIndex(x => x.id === p.id);
+                    const realIndex = session.spun_players.length - 1 - idx;
+                    const palette = PALETTES[selectedPaletteKey];
+                    const theme = palette[(origIdx >= 0 ? origIdx : realIndex) % palette.length];
+                    return (
+                      <div 
+                        key={p.id + idx} 
+                        className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-900 hover:bg-slate-50 dark:hover:bg-gray-800 border border-slate-200 dark:border-gray-800 transition-all text-xs"
+                      >
+                        <div 
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border shadow-sm font-bold text-[10px]"
+                          style={{ backgroundColor: `${theme.fill}15`, color: theme.fill, borderColor: `${theme.fill}30` }}
+                        >
+                          #{realIndex + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-slate-700 dark:text-gray-300 leading-normal font-bold truncate">{p.full_name}</p>
+                          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-400 dark:text-gray-500">
+                            <span>Berhasil terpilih dari undian</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>
@@ -721,6 +903,37 @@ export default function AdminSpinWheelPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Aesthetic Winner Modal */}
+      {winnerModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 dark:bg-gray-900/80 backdrop-blur-sm animate-fade-in" onClick={() => setWinnerModal(null)}>
+          <div className="bg-white dark:bg-[#0b1120] rounded-[2rem] p-8 max-w-sm w-full shadow-2xl transform transition-all text-center border border-gray-100 dark:border-gray-800 relative overflow-hidden" onClick={e => e.stopPropagation()}>
+             {/* Glow effect */}
+             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-blue-500/10 dark:bg-blue-500/20 blur-[50px] pointer-events-none"></div>
+             
+             <h2 className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.2em] mb-2">
+               {session?.spun_players.length && session.spun_players.length % 2 !== 0 ? 'Pemain Pertama Dipilih!' : 'Roda Telah Berhenti!'}
+             </h2>
+             
+             <p className="text-4xl font-display font-black text-gray-900 dark:text-white mb-6 tracking-tight">
+               {winnerModal.full_name}
+             </p>
+             
+             <p className="text-xs text-gray-500 dark:text-gray-400 mb-8 px-4 leading-relaxed">
+               {session?.spun_players.length && session.spun_players.length % 2 !== 0 
+                 ? 'Pemain pertama telah terpilih. Putar sekali lagi untuk menentukan pasangannya!'
+                 : 'Pasangan telah terbentuk! Lanjutkan untuk memutar pemain berikutnya.'}
+             </p>
+             
+             <button 
+               onClick={() => setWinnerModal(null)}
+               className="w-full py-4 px-6 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(37,99,235,0.2)] dark:shadow-[0_0_20px_rgba(37,99,235,0.3)]"
+             >
+               LANJUTKAN
+             </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -10,11 +10,12 @@ import {
   INITIAL_FORM,
   STATUS_CONFIG,
 } from "@/app/admin/tournaments/types";
-import { TournamentType } from "@/app/admin/tournament-type/types";
+import { Point } from "@/app/admin/points/types";
 import Loader from "@/components/shared/Loader";
 import Label from "@/components/form/Label";
 import InputField from "@/components/form/input/InputField";
 import DatePicker from "@/components/form/DatePicker";
+import LocationPicker from "@/components/tournaments/LocationPicker";
 import {
   Trophy,
   MapPin,
@@ -26,6 +27,8 @@ import {
   Save,
   AlertCircle,
   CheckCircle2,
+  Swords,
+  Info,
 } from "lucide-react";
 
 interface TournamentFormProps {
@@ -81,7 +84,7 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
   const isEdit = !!tournamentId;
 
   const [form, setForm] = useState<TournamentFormData>(INITIAL_FORM);
-  const [tournamentTypes, setTournamentTypes] = useState<TournamentType[]>([]);
+  const [tournamentTypes, setPoints] = useState<Point[]>([]);
   const [loadingData, setLoadingData] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [notif, setNotif] = useState<Notif | null>(null);
@@ -91,11 +94,11 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
 
   useEffect(() => {
     supabase
-      .from("tournament_types")
+      .from("points")
       .select("*")
       .eq("is_active", true)
       .order("name")
-      .then(({ data }) => setTournamentTypes((data as TournamentType[]) ?? []));
+      .then(({ data }) => setPoints((data as Point[]) ?? []));
   }, []);
 
   // ─── Fetch existing tournament for edit ───────────────────────────────────
@@ -112,17 +115,18 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
         if (data) {
           const t = data as Tournament;
           setForm({
-            tournament_type_id: t.tournament_type_id ?? "",
+            points_id: t.points_id ?? "",
             name: t.name,
             description: t.description ?? "",
             location: t.location ?? "",
             start_date: t.start_date,
-            end_date: t.end_date,
             registration_deadline: t.registration_deadline ?? "",
             max_participants: t.max_participants?.toString() ?? "",
             entry_fee: t.entry_fee === 0 ? "" : t.entry_fee?.toString() ?? "",
             prize_pool: t.prize_pool === 0 ? "" : t.prize_pool?.toString() ?? "",
             status: t.status,
+            match_format: (t.match_format as 'tunggal' | 'ganda') ?? 'ganda',
+            gender_category: (t.gender_category as 'putra' | 'putri' | 'campuran') ?? 'campuran',
             rules: t.rules ?? "",
           });
         }
@@ -146,10 +150,6 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
     const newErrors: Partial<Record<keyof TournamentFormData, string>> = {};
     if (!form.name.trim()) newErrors.name = "Nama turnamen wajib diisi";
     if (!form.start_date) newErrors.start_date = "Tanggal mulai wajib diisi";
-    if (!form.end_date) newErrors.end_date = "Tanggal selesai wajib diisi";
-    if (form.start_date && form.end_date && form.end_date < form.start_date) {
-      newErrors.end_date = "Tanggal selesai tidak boleh sebelum tanggal mulai";
-    }
     if (
       form.registration_deadline &&
       form.start_date &&
@@ -173,19 +173,19 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
     setSaving(true);
 
     const payload = {
-      tournament_type_id: form.tournament_type_id || null,
+      points_id: form.points_id || null,
       name: form.name.trim(),
       description: form.description.trim() || null,
       location: form.location.trim() || null,
       start_date: form.start_date,
-      end_date: form.end_date,
       registration_deadline: form.registration_deadline || null,
       max_participants: form.max_participants ? Number(form.max_participants) : null,
       entry_fee: Number(form.entry_fee) || 0,
       prize_pool: Number(form.prize_pool) || 0,
       status: form.status,
+      match_format: form.match_format,
+      gender_category: form.gender_category,
       rules: form.rules.trim() || null,
-      updated_at: new Date().toISOString(),
     };
 
     let error = null;
@@ -263,11 +263,11 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
 
             {/* Tipe Turnamen */}
             <div>
-              <Label htmlFor="tournament_type_id">Tipe Turnamen</Label>
+              <Label htmlFor="points_id">Tipe Turnamen</Label>
               <select
-                id="tournament_type_id"
-                value={form.tournament_type_id}
-                onChange={(e) => setField("tournament_type_id", e.target.value)}
+                id="points_id"
+                value={form.points_id}
+                onChange={(e) => setField("points_id", e.target.value)}
                 className={FIELD_CLASS}
               >
                 <option value="">-- Pilih tipe --</option>
@@ -313,6 +313,100 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
           </div>
         </SectionCard>
 
+        {/* ── 1b. Format Pertandingan ─────────────────────────────────── */}
+        <SectionCard
+          icon={<Swords className="w-4 h-4" />}
+          title="Format Pertandingan"
+          subtitle="Jenis dan kategori gender pertandingan"
+          iconBg="bg-violet-50 dark:bg-violet-500/10"
+          iconColor="text-violet-600 dark:text-violet-400"
+        >
+          <div className="space-y-5">
+            {/* Format: Tunggal / Ganda */}
+            <div>
+              <Label>Format Pertandingan <span className="text-red-500">*</span></Label>
+              <div className="flex gap-3 mt-2">
+                {([
+                  { value: 'ganda', label: 'Ganda', desc: 'Spin wheel untuk bentuk pasangan', icon: '👥' },
+                  { value: 'tunggal', label: 'Tunggal', desc: 'Jadwal langsung dari peserta', icon: '🏃' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setField('match_format', opt.value);
+                      // Jika ganti ke tunggal dan gender sedang campuran, reset ke putra
+                      if (opt.value === 'tunggal' && form.gender_category === 'campuran') {
+                        setField('gender_category', 'putra');
+                      }
+                    }}
+                    className={`flex-1 flex flex-col items-center gap-1.5 px-4 py-4 rounded-xl border-2 text-sm font-medium transition-all ${
+                      form.match_format === opt.value
+                        ? 'border-violet-500 bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300'
+                        : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="text-2xl">{opt.icon}</span>
+                    <span className="font-semibold">{opt.label}</span>
+                    <span className="text-xs text-center opacity-70">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+              {form.match_format === 'tunggal' && (
+                <div className="mt-3 flex items-start gap-2 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-300">
+                  <Info className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span>Format <strong>Tunggal</strong>: Spin Wheel tidak diperlukan. Jadwal Round Robin akan dibuat otomatis langsung dari daftar peserta yang terdaftar.</span>
+                </div>
+              )}
+            </div>
+
+            {/* Gender: Putra / Putri / Campuran */}
+            <div>
+              <Label>Kategori Gender <span className="text-red-500">*</span></Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 mb-2">
+                {form.match_format === 'tunggal'
+                  ? 'Tunggal tidak memiliki kategori campuran'
+                  : 'Ganda campuran = pasangan beda gender'}
+              </p>
+              <div className="flex gap-3 mt-2">
+                {([
+                  { value: 'putra', label: 'Putra', desc: 'Hanya laki-laki', color: 'blue' },
+                  { value: 'putri', label: 'Putri', desc: 'Hanya perempuan', color: 'pink' },
+                  // Campuran hanya untuk ganda
+                  ...(form.match_format === 'ganda'
+                    ? [{ value: 'campuran' as const, label: 'Campuran', desc: 'Semua gender', color: 'violet' }]
+                    : []),
+                ] as const).map(opt => {
+                  const active = form.gender_category === opt.value;
+                  const cls = active
+                    ? opt.color === 'blue'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300'
+                      : opt.color === 'pink'
+                      ? 'border-pink-500 bg-pink-50 dark:bg-pink-500/10 text-pink-700 dark:text-pink-300'
+                      : 'border-violet-500 bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 hover:border-gray-300';
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setField('gender_category', opt.value)}
+                      className={`flex-1 flex flex-col items-center gap-1 px-3 py-3 rounded-xl border-2 text-sm font-medium transition-all ${cls}`}
+                    >
+                      <span className="font-semibold">{opt.label}</span>
+                      <span className="text-xs opacity-70">{opt.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {form.gender_category !== 'campuran' && (
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                  ⚠️ Hanya peserta {form.gender_category === 'putra' ? 'laki-laki' : 'perempuan'} yang dapat mendaftar turnamen ini.
+                </p>
+              )}
+            </div>
+          </div>
+        </SectionCard>
+
         {/* ── 2. Lokasi & Tanggal ────────────────────────────────────────── */}
         <SectionCard
           icon={<CalendarDays className="w-4 h-4" />}
@@ -325,17 +419,10 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
             {/* Lokasi */}
             <div className="md:col-span-2">
               <Label htmlFor="location">Lokasi</Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  id="location"
-                  type="text"
-                  value={form.location}
-                  onChange={(e) => setField("location", e.target.value)}
-                  placeholder="Nama gedung / kota penyelenggaraan"
-                  className={`${FIELD_CLASS} pl-9`}
-                />
-              </div>
+              <LocationPicker
+                value={form.location}
+                onChange={(val) => setField("location", val)}
+              />
             </div>
 
             {/* Tanggal Mulai */}
@@ -351,22 +438,6 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
               />
               {errors.start_date && (
                 <p className="mt-1.5 text-xs text-red-500">{errors.start_date}</p>
-              )}
-            </div>
-
-            {/* Tanggal Selesai */}
-            <div>
-              <Label htmlFor="end_date">
-                Tanggal Selesai <span className="text-red-500">*</span>
-              </Label>
-              <DatePicker
-                id="end_date"
-                value={form.end_date}
-                onChange={(date) => setField("end_date", date)}
-                placeholder="Pilih tanggal selesai"
-              />
-              {errors.end_date && (
-                <p className="mt-1.5 text-xs text-red-500">{errors.end_date}</p>
               )}
             </div>
 

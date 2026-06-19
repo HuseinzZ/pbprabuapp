@@ -5,7 +5,7 @@ export async function syncTournamentStatuses() {
   
   const { data: tournaments, error } = await supabase
     .from("tournaments")
-    .select("id, status, start_date, end_date, registration_deadline");
+    .select("id, status, start_date, registration_deadline");
 
   if (error || !tournaments) return;
 
@@ -21,7 +21,7 @@ export async function syncTournamentStatuses() {
     const startDate = new Date(t.start_date);
     startDate.setHours(0, 0, 0, 0);
 
-    const endDate = new Date(t.end_date);
+    const endDate = new Date(t.start_date);
     endDate.setHours(23, 59, 59, 999);
 
     const regDeadline = t.registration_deadline ? new Date(t.registration_deadline) : null;

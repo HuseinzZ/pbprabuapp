@@ -6,8 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { X, Save, Loader2, Trophy, Swords } from "lucide-react";
 import { toast } from "react-toastify";
 import {
-  isAllRRComplete, hasKnockoutPhase, generateSemiFinals,
-  isSFComplete, hasFinalPhase, generateFinal
+  isAllRRComplete, getCurrentDeepestPhase, isPhaseComplete, generateNextKnockoutPhase
 } from "@/lib/utils/knockout-engine";
 
 import { autoDistributePoints } from "@/lib/actions/point";
@@ -26,6 +25,7 @@ interface Match {
   round_number: number | null;
   match_number: number | null;
   status: string | null;
+  category: string | null;
   score_team1: number | null;
   score_team2: number | null;
   winner_team_id: string | null;
@@ -82,6 +82,10 @@ export default function ScoreInputModal({ match, isOpen, onClose, onSaved }: Sco
       toast.error("Skor harus berupa angka positif");
       return;
     }
+    if (s1 === s2) {
+      toast.error("Skor kedua tim tidak boleh sama");
+      return;
+    }
 
     setSaving(true);
     const winnerId =
@@ -113,22 +117,18 @@ export default function ScoreInputModal({ match, isOpen, onClose, onSaved }: Sco
         const allMatches = matchesData || [];
         const allTeams = teamsData || [];
 
-        if (match.phase === "RR" || !match.phase) {
-          if (isAllRRComplete(allMatches as any, allTeams as any) && !hasKnockoutPhase(allMatches as any)) {
-            const res = await generateSemiFinals(match.tournament_id);
-            if (res.success) toast.success(`Jadwal ${res.phase === 'F' ? 'Final' : 'Semi Final'} otomatis dibuat!`);
+        const deepestPhase = getCurrentDeepestPhase(allMatches as any);
+        if (deepestPhase !== 'F') {
+          if (isPhaseComplete(allMatches as any, deepestPhase, allTeams as any)) {
+            const res = await generateNextKnockoutPhase(match.tournament_id);
+            if (res.success) toast.success(`Jadwal babak ${res.phase} otomatis dibuat!`);
             else toast.error(res.error || "Gagal membuat jadwal otomatis.");
-          }
-        } else if (match.phase === "SF") {
-          if (isSFComplete(allMatches as any) && !hasFinalPhase(allMatches as any)) {
-            const res = await generateFinal(match.tournament_id);
-            if (res.success) toast.success("Jadwal Final & Juara 3 otomatis dibuat!");
-            else toast.error(res.error || "Gagal membuat jadwal Final otomatis.");
           }
         }
 
         // ── Auto-distribute Points ──
-        await autoDistributePoints(supabase, match.tournament_id, match.id);
+        const isFinalMatch = match.phase === "F";
+        await autoDistributePoints(supabase, match.tournament_id, match.id, isFinalMatch);
 
       } catch (err) {
         console.error("Auto-generate error", err);
@@ -158,9 +158,20 @@ export default function ScoreInputModal({ match, isOpen, onClose, onSaved }: Sco
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2">
             <Swords className="w-5 h-5 text-brand-500" />
-            <h2 className="font-semibold text-gray-900 dark:text-white text-sm">
-              Input Skor — Grup {match.group_name}
-            </h2>
+            <div>
+              <h2 className="font-semibold text-gray-900 dark:text-white text-sm">
+                Input Skor — Grup {match.group_name || "—"}
+              </h2>
+              {match.category && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {match.category === "tunggal_putra" ? "Tunggal Putra" :
+                   match.category === "tunggal_putri" ? "Tunggal Putri" :
+                   match.category === "ganda_putra" ? "Ganda Putra" :
+                   match.category === "ganda_putri" ? "Ganda Putri" :
+                   match.category === "ganda_campuran" ? "Ganda Campuran" : match.category}
+                </p>
+              )}
+            </div>
           </div>
           <button
             onClick={onClose}

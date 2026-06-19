@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/client';
+import { generateFirstKnockoutRoundInserts } from '@/lib/utils/knockout-engine';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 export interface PlayerSlot {
   id: string;
-  full_name: string;
+  fullname: string;
   isBye?: boolean;
 }
 
@@ -21,32 +22,57 @@ export interface GroupResult {
 
 // ─── Assign Groups ─────────────────────────────────────────────────────────────
 
-export function assignGroups(pairs: { p1: PlayerSlot; p2: PlayerSlot; spinOrder: number }[]): GroupResult[] {
-  const groups: GroupResult[] = [];
-  const groupNames = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  for (let i = 0; i < pairs.length; i += 4) {
-    const chunk = pairs.slice(i, i + 4);
-    const teamCount = chunk.length;
-    const matchCount = (teamCount * (teamCount - 1)) / 2;
-    groups.push({
-      groupName: groupNames[groups.length] || `G${groups.length + 1}`,
-      teams: chunk,
-      matches: Array.from({ length: matchCount }, () => null),
-    });
-  }
-  return groups;
+export function assignGroups(teams: any[]): any[] {
+  const activeTeams = teams.filter(t => !t.is_bye_team);
+  const byes = teams.filter(t => t.is_bye_team);
+  
+  const groupCount = activeTeams.length <= 5 ? 1 : 2;
+  const groupNames = ['A', 'B'];
+
+  activeTeams.forEach((team, i) => {
+    team.group_name = groupNames[i % groupCount];
+  });
+
+  return [...activeTeams, ...byes];
 }
 
 // ─── Round-Robin Match Generator ───────────────────────────────────────────────
 
-function generateRoundRobinPairs(count: number): [number, number][] {
-  const pairs: [number, number][] = [];
-  for (let i = 0; i < count - 1; i++) {
-    for (let j = i + 1; j < count; j++) {
-      pairs.push([i, j]);
+export function generateRRMatches(
+  tournamentId: string,
+  sessionId: string | null,
+  teams: any[],
+  category: string | null
+): any[] {
+  const matchInserts: any[] = [];
+  const groups = [...new Set(teams.filter(t => !t.is_bye_team).map(t => t.group_name).filter(Boolean))];
+  
+  let globalMatchNum = 1;
+
+  for (const group of groups) {
+    const groupTeams = teams.filter(t => t.group_name === group && !t.is_bye_team);
+    
+    // Kombinasi RR
+    for (let i = 0; i < groupTeams.length; i++) {
+      for (let j = i + 1; j < groupTeams.length; j++) {
+        matchInserts.push({
+          tournament_id: tournamentId,
+          spin_session_id: sessionId,
+          phase: 'RR',
+          group_name: group,
+          round_number: 1,
+          match_number: globalMatchNum++,
+          team1_id: groupTeams[i].id,
+          team2_id: groupTeams[j].id,
+          status: 'scheduled',
+          is_bye: false,
+          category: category || null
+        });
+      }
     }
   }
-  return pairs;
+
+  return matchInserts;
 }
 
 // ─── Generate Schedule From Spin ───────────────────────────────────────────────
@@ -65,133 +91,114 @@ export async function generateScheduleFromSpin(
 
     let totalMatchesCreated = 0;
 
-    // DIRECT KNOCKOUT LOGIC IF <= 2 TEAMS
-    if (pairs.length <= 2) {
-      const teamInserts = pairs.map((pair, pos) => ({
+    // DYNAMIC GROUP ASSIGNMENT
+    const activePairCount = pairs.filter(p => !p.p2.isBye && !p.p1.isBye).length;
+    const groupCount = activePairCount <= 5 ? 1 : 2;
+    const groupNames = ['A', 'B'];
+    let activeIdx = 0;
+
+    const teamInserts = pairs.map((pair, pos) => {
+      const isBye = pair.p2.isBye || pair.p1.isBye || false;
+      const gName = isBye ? null : groupNames[activeIdx++ % groupCount];
+      
+      return {
         tournament_id: tournamentId,
         spin_session_id: sessionId,
-        name: pair.p2.isBye
-          ? `${pair.p1.full_name} (BYE)`
-          : `${pair.p1.full_name} / ${pair.p2.full_name}`,
+        name: isBye
+          ? `${pair.p1.fullname} (BYE)`
+          : `${pair.p1.fullname} / ${pair.p2.fullname}`,
         player1_id: pair.p1.isBye ? null : pair.p1.id,
         player2_id: pair.p2.isBye ? null : pair.p2.id,
-        is_bye_team: pair.p2.isBye || pair.p1.isBye || false,
-        group_name: null,
+        is_bye_team: isBye,
+        group_name: gName,
         group_position: pos + 1,
         spin_order: pos + 1,
-      }));
+      };
+    });
 
-      const { data: insertedTeams, error: teamError } = await supabase
-        .from('teams')
-        .insert(teamInserts)
-        .select('id, player1_id, player2_id, is_bye_team, group_position');
+    const { data: insertedTeams, error: teamError } = await supabase
+      .from('teams')
+      .insert(teamInserts)
+      .select('id, player1_id, player2_id, is_bye_team, group_name, group_position');
 
-      if (teamError) throw new Error(`Gagal insert teams: ${teamError.message}`);
-      if (!insertedTeams) return { success: false, error: 'Gagal mendapatkan data tim.' };
+    if (teamError) throw new Error(`Gagal insert teams: ${teamError.message}`);
+    if (!insertedTeams) return { success: false, error: 'Gagal mendapatkan data tim.' };
 
-      const activeTeams = insertedTeams.filter(t => !t.is_bye_team);
-      const matchInserts: any[] = [];
+    const activeTeams = insertedTeams.filter(t => !t.is_bye_team);
+    const matchInserts = generateRRMatches(tournamentId, sessionId, activeTeams, null);
 
-      if (activeTeams.length <= 2) {
-        // Direct Final
-        if (activeTeams.length === 2) {
-          matchInserts.push({
-            tournament_id: tournamentId, spin_session_id: sessionId,
-            phase: 'F', group_name: null, round_number: 1, match_number: 1,
-            team1_id: activeTeams[0].id, team2_id: activeTeams[1].id,
-            status: 'scheduled', is_bye: false,
-          });
-        }
-      } else {
-        // Semi Final
-        matchInserts.push({
-          tournament_id: tournamentId, spin_session_id: sessionId,
-          phase: 'SF', group_name: null, round_number: 1, match_number: 1,
-          team1_id: activeTeams[0].id, team2_id: activeTeams[1].id,
-          status: 'scheduled', is_bye: false,
-        });
-
-        if (activeTeams.length === 4) {
-          matchInserts.push({
-            tournament_id: tournamentId, spin_session_id: sessionId,
-            phase: 'SF', group_name: null, round_number: 1, match_number: 2,
-            team1_id: activeTeams[2].id, team2_id: activeTeams[3].id,
-            status: 'scheduled', is_bye: false,
-          });
-        } else if (activeTeams.length === 3) {
-          matchInserts.push({
-            tournament_id: tournamentId, spin_session_id: sessionId,
-            phase: 'SF', group_name: null, round_number: 1, match_number: 2,
-            team1_id: activeTeams[2].id, team2_id: null,
-            status: 'completed', winner_team_id: activeTeams[2].id, is_bye: true,
-          });
-        }
-      }
-
-      if (matchInserts.length > 0) {
-        const { error: matchError } = await supabase.from('matches').insert(matchInserts);
-        if (matchError) throw new Error(`Gagal insert matches: ${matchError.message}`);
-        totalMatchesCreated += matchInserts.length;
-      }
-
-      return { success: true, totalMatches: totalMatchesCreated };
+    if (matchInserts.length > 0) {
+      const { error: matchError } = await supabase.from('matches').insert(matchInserts);
+      if (matchError) throw new Error(`Gagal insert matches: ${matchError.message}`);
+      totalMatchesCreated += matchInserts.length;
     }
 
-    // ROUND ROBIN LOGIC IF > 4 TEAMS
-    const groups = assignGroups(pairs.map((p, i) => ({ ...p, spinOrder: i + 1 })));
+    return { success: true, totalMatches: totalMatchesCreated };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Unknown error' };
+  }
+}
 
+// ─── Generate Schedule From Participants (for Tunggal format) ──────────────────
 
+export interface ParticipantSlot {
+  playerId: string;
+  fullName: string;
+}
 
-    for (const group of groups) {
-      // 2. Insert teams untuk grup ini
-      const teamInserts = group.teams.map((pair, pos) => ({
-        tournament_id: tournamentId,
-        spin_session_id: sessionId,
-        name: pair.p2.isBye
-          ? `${pair.p1.full_name} (BYE)`
-          : `${pair.p1.full_name} / ${pair.p2.full_name}`,
-        player1_id: pair.p1.isBye ? null : pair.p1.id,
-        player2_id: pair.p2.isBye ? null : pair.p2.id,
-        is_bye_team: pair.p2.isBye || pair.p1.isBye || false,
-        group_name: group.groupName,
-        group_position: pos + 1,
-        spin_order: pos + 1,
-      }));
+export async function generateScheduleFromParticipants(
+  tournamentId: string,
+  participants: ParticipantSlot[],
+  category?: string | null
+) {
+  const supabase = createClient();
 
-      const { data: insertedTeams, error: teamError } = await supabase
-        .from('teams')
-        .insert(teamInserts)
-        .select('id, player1_id, player2_id, is_bye_team, group_position');
+  try {
+    // 1. Hapus data lama (idempotent, tanpa spin_session_id)
+    await supabase.from('matches').delete()
+      .eq('tournament_id', tournamentId)
+      .is('spin_session_id', null);
+    await supabase.from('teams').delete()
+      .eq('tournament_id', tournamentId)
+      .is('spin_session_id', null);
 
-      if (teamError) throw new Error(`Gagal insert teams grup ${group.groupName}: ${teamError.message}`);
-      if (!insertedTeams) continue;
+    let totalMatchesCreated = 0;
 
-      // Filter out BYE teams dari pertandingan
-      const activeTeams = insertedTeams.filter(t => !t.is_bye_team);
+    // DYNAMIC GROUP ASSIGNMENT
+    const activeCount = participants.length;
+    const groupCount = activeCount <= 5 ? 1 : 2;
+    const groupNames = ['A', 'B'];
+    let activeIdx = 0;
 
-      // 3. Generate jadwal Round-Robin antar tim aktif dalam grup
-      const rrPairs = generateRoundRobinPairs(activeTeams.length);
-      let roundNumber = 1;
+    const teamInserts = participants.map((p, pos) => ({
+      tournament_id: tournamentId,
+      spin_session_id: null,
+      name: p.fullName,
+      player1_id: p.playerId,
+      player2_id: null,
+      is_bye_team: false,
+      group_name: groupNames[activeIdx++ % groupCount],
+      group_position: pos + 1,
+      spin_order: pos + 1,
+    }));
 
-      const matchInserts = rrPairs.map(([ i, j ], matchIdx) => ({
-        tournament_id: tournamentId,
-        spin_session_id: sessionId,
-        phase: 'RR',
-        group_name: group.groupName,
-        round_number: roundNumber++,
-        match_number: matchIdx + 1,
-        team1_id: activeTeams[i].id,
-        team2_id: activeTeams[j].id,
-        status: 'scheduled',
-        is_bye: false,
-      }));
+    const { data: insertedTeams, error: teamError } = await supabase
+      .from('teams').insert(teamInserts)
+      .select('id, player1_id, is_bye_team, group_name, group_position');
 
-      if (matchInserts.length > 0) {
-        const { error: matchError } = await supabase.from('matches').insert(matchInserts);
-        if (matchError) throw new Error(`Gagal insert matches grup ${group.groupName}: ${matchError.message}`);
-        totalMatchesCreated += matchInserts.length;
-      }
+    if (teamError) throw new Error(`Gagal insert teams: ${teamError.message}`);
+    if (!insertedTeams) return { success: false, error: 'Gagal mendapatkan data tim.' };
+
+    const activeTeams = insertedTeams.filter(t => !t.is_bye_team);
+    const matchInserts = generateRRMatches(tournamentId, null, activeTeams, category || null);
+
+    if (matchInserts.length > 0) {
+      const { error: matchError } = await supabase.from('matches').insert(matchInserts);
+      if (matchError) throw new Error(`Gagal insert matches: ${matchError.message}`);
+      totalMatchesCreated += matchInserts.length;
     }
+
+    // (Round Robin logic has been completely removed)
 
     return { success: true, totalMatches: totalMatchesCreated };
   } catch (err: any) {

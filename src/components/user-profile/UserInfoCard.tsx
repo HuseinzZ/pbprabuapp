@@ -8,9 +8,8 @@ import Loader from "@/components/shared/Loader";
 
 interface Profile {
   id: string;
-  full_name: string;
+  fullname: string;
   email: string | null;
-  phone: string | null;
   address: string | null;
   gender: string | null;
   birth_date: string | null;
@@ -19,6 +18,7 @@ interface Profile {
   height: number | null;
   hand_dominance: string | null;
   is_active: boolean;
+  user_id: string;
 }
 
 export default function UserInfoCard({ userId }: { userId: string }) {
@@ -36,13 +36,33 @@ export default function UserInfoCard({ userId }: { userId: string }) {
       setLoading(true);
 
       const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, phone, address, gender, birth_date, avatar_url, username, height, hand_dominance, is_active")
-        .eq("id", userId)
+        .from("profile")
+        .select(`
+          id, fullname, address, gender, birth_date, avatar_url, username, height, hand_dominance, is_active, user_id
+        `)
+        .eq("user_id", userId)
         .single();
 
+      // Ambil email dari auth session
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email || null;
+
       if (!error && data) {
-        setProfile(data as Profile);
+        const mappedProfile: Profile = {
+          id: data.id,
+          user_id: data.user_id,
+          fullname: data.fullname || "",
+          address: data.address,
+          gender: data.gender,
+          birth_date: data.birth_date,
+          avatar_url: data.avatar_url,
+          username: data.username,
+          height: data.height,
+          hand_dominance: data.hand_dominance,
+          is_active: data.is_active ?? true,
+          email: userEmail,
+        };
+        setProfile(mappedProfile);
       }
       setLoading(false);
     }
@@ -76,14 +96,14 @@ export default function UserInfoCard({ userId }: { userId: string }) {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-gray-400">
-                {profile?.full_name?.charAt(0)?.toUpperCase() || "U"}
+                {profile?.fullname?.charAt(0)?.toUpperCase() || "U"}
               </div>
             )}
           </div>
         </div>
         <div>
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            {profile?.full_name || "—"}
+            {profile?.fullname || "—"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {profile?.email || ""}
@@ -100,7 +120,7 @@ export default function UserInfoCard({ userId }: { userId: string }) {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Nama Lengkap</p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">{profile?.full_name || "—"}</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90">{profile?.fullname || "—"}</p>
             </div>
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Username</p>
@@ -109,10 +129,6 @@ export default function UserInfoCard({ userId }: { userId: string }) {
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Email</p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">{profile?.email || "—"}</p>
-            </div>
-            <div>
-              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">No. Telepon</p>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">{profile?.phone || "—"}</p>
             </div>
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Jenis Kelamin</p>
@@ -153,7 +169,7 @@ export default function UserInfoCard({ userId }: { userId: string }) {
                 {profile?.is_active ? "Aktif" : "Nonaktif"}
               </span>
             </div>
-            <div>
+            <div className="col-span-1 lg:col-span-2">
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">Alamat</p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">{profile?.address || "—"}</p>
             </div>

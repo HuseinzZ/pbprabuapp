@@ -29,3 +29,17 @@ export const CATEGORY_COLORS: Record<GalleryCategory, { bg: string; text: string
   event:      { bg: "bg-violet-100 dark:bg-violet-500/10", text: "text-violet-700 dark:text-violet-400" },
   general:    { bg: "bg-gray-100 dark:bg-gray-700/40",   text: "text-gray-600 dark:text-gray-400"  },
 };
+
+export interface GalleryActivityLog {
+  id: string;
+  action: string;
+  timestamp: string;
+  type: 'create' | 'update' | 'delete' | 'access_toggle';
+}
+
+export interface GalleryFilters {
+  query: string;
+  category: string;
+  status: string; // 'published' | 'draft' | ''
+  sortBy: string;
+}

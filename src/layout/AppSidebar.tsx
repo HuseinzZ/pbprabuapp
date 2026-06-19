@@ -33,8 +33,8 @@ const navItems: NavItem[] = [
   },
   {
     icon: <UserCircleIcon />,
-    name: "Manajemen Pemain",
-    path: "/admin/players",
+    name: "Manajemen User",
+    path: "/admin/users",
   },
   {
     icon: <CalenderIcon />,
@@ -48,12 +48,12 @@ const navItems: NavItem[] = [
   },
   {
     icon: <BoxCubeIcon />,
-    name: "Tipe turnamen",
-    path: "/admin/tournament-type",
+    name: "Pengaturan Poin",
+    path: "/admin/points",
   },
   {
     icon: <TableIcon />,
-    name: "Manajemen Turnamen",
+    name: "Turnamen",
     path: "/admin/tournaments",
   },
   {
@@ -294,27 +294,33 @@ const AppSidebar: React.FC = () => {
         className={`py-8 flex ${!(isExpanded || isHovered || isMobileOpen) ? "lg:justify-center" : "justify-center"
           }`}
       >
-        <Link href="/admin" className="flex items-center justify-center">
+        <Link href="/admin" className="flex flex-col items-center justify-center gap-3 text-center px-2">
           {isExpanded || isHovered || isMobileOpen ? (
             <>
               <Image
-                className="dark:hidden"
+                className="dark:hidden object-contain w-16 h-auto"
                 src="/1.png"
                 alt="Logo"
-                width={110}
-                height={20}
+                width={100}
+                height={100}
                 priority
-                style={{ width: "auto", height: "auto" }}
               />
               <Image
-                className="hidden dark:block"
+                className="hidden dark:block object-contain w-16 h-auto"
                 src="/1.png"
                 alt="Logo"
-                width={110}
-                height={20}
+                width={100}
+                height={100}
                 priority
-                style={{ width: "auto", height: "auto" }}
               />
+              <div className="flex flex-col items-center">
+                <span className="font-extrabold text-xl tracking-tight text-gray-900 dark:text-white leading-none">
+                  SIMPERTA
+                </span>
+                <span className="text-[9px] text-gray-500 dark:text-gray-400 font-medium mt-1.5 uppercase tracking-wider text-center">
+                  Sistem Manajemen Pertandingan
+                </span>
+              </div>
             </>
           ) : (
             <Image
@@ -323,7 +329,7 @@ const AppSidebar: React.FC = () => {
               width={40}
               height={40}
               priority
-              style={{ width: "auto", height: "auto" }}
+              className="object-contain w-8 h-auto"
             />
           )}
         </Link>

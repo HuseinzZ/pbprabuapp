@@ -114,7 +114,7 @@ export function TopPlayersBar({ names, points }: TopPlayersBarProps) {
         distributed: true,
       },
     },
-    colors: ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd", "#818cf8", "#4f46e5", "#7c3aed", "#6d28d9"],
+    colors: ["#4f46e5", "#6366f1", "#7c3aed", "#8b5cf6", "#6d28d9", "#4338ca", "#5b21b6", "#3730a3"],
     dataLabels: {
       enabled: true,
       formatter: (val: number) => `${val} pts`,

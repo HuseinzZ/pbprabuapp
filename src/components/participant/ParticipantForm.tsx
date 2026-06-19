@@ -79,8 +79,8 @@ export default function ParticipantForm({ participantId, defaultTournamentId }: 
     ...INITIAL_FORM,
     tournament_id: defaultTournamentId || "",
   });
-  const [tournaments, setTournaments] = useState<{ id: string; name: string }[]>([]);
-  const [players, setPlayers] = useState<{ id: string; full_name: string; email: string | null }[]>([]);
+  const [tournaments, setTournaments] = useState<{ id: string; name: string; status: string; gender_category?: string }[]>([]);
+  const [profiles, setprofiles] = useState<{ id: string; fullname: string; gender?: string | null }[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notif, setNotif] = useState<Notif | null>(null);
@@ -93,23 +93,23 @@ export default function ParticipantForm({ participantId, defaultTournamentId }: 
     async function loadData() {
       setLoadingData(true);
       
-      let tQuery = supabase.from("tournaments").select("id, name, status").order("start_date", { ascending: false });
+      let tQuery = supabase.from("tournaments").select("id, name, status, gender_category").order("start_date", { ascending: false });
       
       if (isEdit) {
         // Edit mode: exclude cancelled
         tQuery = tQuery.neq("status", "cancelled");
       } else {
-        // Add mode: only upcoming & registration
-        tQuery = tQuery.in("status", ["upcoming", "registration"]);
+        // Add mode: upcoming, registration, and ongoing (today/future)
+        tQuery = tQuery.in("status", ["upcoming", "registration", "ongoing"]);
       }
 
       const [tRes, pRes] = await Promise.all([
         tQuery,
-        supabase.from("players").select("id, full_name, email").eq("is_active", true).order("full_name"),
+        supabase.from("profile").select("id, fullname, gender").eq("is_active", true).order("fullname"),
       ]);
       
       setTournaments(tRes.data || []);
-      setPlayers(pRes.data || []);
+      setprofiles(pRes.data || []);
 
       if (isEdit) {
         const { data } = await supabase
@@ -121,8 +121,8 @@ export default function ParticipantForm({ participantId, defaultTournamentId }: 
         if (data) {
           setForm({
             tournament_id: data.tournament_id ?? "",
-            player_id: data.player_id ?? "",
-            player_ids: [],
+            profile_id: data.profile_id ?? "",
+            profile_ids: [],
             status: data.status || "registered",
             payment_status: data.payment_status || "unpaid",
             notes: data.notes ?? "",
@@ -140,11 +140,11 @@ export default function ParticipantForm({ participantId, defaultTournamentId }: 
       return;
     }
     supabase.from("tournament_participants")
-      .select("player_id")
+      .select("profile_id")
       .eq("tournament_id", form.tournament_id)
       .then(({ data }) => {
         if (data) {
-          setExistingParticipantIds(new Set(data.map(d => d.player_id).filter(Boolean) as string[]));
+          setExistingParticipantIds(new Set(data.map(d => d.profile_id).filter(Boolean) as string[]));
         }
       });
   }, [form.tournament_id, isEdit, supabase]);
@@ -161,25 +161,25 @@ export default function ParticipantForm({ participantId, defaultTournamentId }: 
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   }
 
-  function togglePlayer(playerId: string) {
+  function toggleProfile(profileId: string) {
     setForm((prev) => {
-      const ids = prev.player_ids || [];
-      if (ids.includes(playerId)) {
-        return { ...prev, player_ids: ids.filter((id) => id !== playerId) };
+      const ids = prev.profile_ids || [];
+      if (ids.includes(profileId)) {
+        return { ...prev, profile_ids: ids.filter((id) => id !== profileId) };
       } else {
-        return { ...prev, player_ids: [...ids, playerId] };
+        return { ...prev, profile_ids: [...ids, profileId] };
       }
     });
-    setErrors((prev) => ({ ...prev, player_ids: undefined }));
+    setErrors((prev) => ({ ...prev, profile_ids: undefined }));
   }
 
   function validate(): boolean {
     const newErrors: Partial<Record<keyof ParticipantFormData, string>> = {};
     if (!form.tournament_id) newErrors.tournament_id = "Pilih turnamen";
     if (isEdit) {
-      if (!form.player_id) newErrors.player_id = "Pilih pemain";
+      if (!form.profile_id) newErrors.profile_id = "Pilih pemain";
     } else {
-      if (!form.player_ids || form.player_ids.length === 0) newErrors.player_ids = "Pilih minimal 1 pemain";
+      if (!form.profile_ids || form.profile_ids.length === 0) newErrors.profile_ids = "Pilih minimal 1 pemain";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -200,7 +200,7 @@ export default function ParticipantForm({ participantId, defaultTournamentId }: 
     if (isEdit) {
       const payload = {
         tournament_id: form.tournament_id,
-        player_id: form.player_id,
+        profile_id: form.profile_id,
         status: form.status,
         payment_status: form.payment_status,
         notes: form.notes.trim() || null,
@@ -212,9 +212,9 @@ export default function ParticipantForm({ participantId, defaultTournamentId }: 
         .eq("id", participantId!);
       error = res.error;
     } else {
-      const payloads = form.player_ids.map((id) => ({
+      const payloads = form.profile_ids.map((id) => ({
         tournament_id: form.tournament_id,
-        player_id: id,
+        profile_id: id,
         status: form.status,
         payment_status: form.payment_status,
         notes: form.notes.trim() || null,
@@ -239,10 +239,36 @@ export default function ParticipantForm({ participantId, defaultTournamentId }: 
       "success",
       isEdit ? "Peserta berhasil diperbarui!" : "Peserta berhasil ditambahkan!"
     );
+
+    try {
+      const actionText = isEdit 
+        ? `Memperbarui data peserta di turnamen` 
+        : `Mendaftarkan ${form.profile_ids.length} peserta baru ke turnamen`;
+      const type = isEdit ? 'update' : 'create';
+      const storedLogs = JSON.parse(localStorage.getItem('manajemen_peserta_logs') || '[]');
+      const newLog = {
+        id: `log-${Date.now()}`,
+        action: actionText,
+        timestamp: new Date().toISOString(),
+        type
+      };
+      localStorage.setItem('manajemen_peserta_logs', JSON.stringify([...storedLogs, newLog].slice(-50)));
+    } catch (err) {}
+
     setTimeout(() => router.push("/admin/participant"), 1000);
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
+
+  const selectedTournamentData = tournaments.find(t => t.id === form.tournament_id);
+  const tournamentGender = selectedTournamentData?.gender_category;
+  const filteredprofiles = profiles.filter(p => {
+    if (!form.tournament_id) return true;
+    if (!tournamentGender || tournamentGender === 'campuran') return true;
+    if (tournamentGender === 'putra') return p.gender === 'male';
+    if (tournamentGender === 'putri') return p.gender === 'female';
+    return true;
+  });
 
   return (
     <>
@@ -295,21 +321,21 @@ export default function ParticipantForm({ participantId, defaultTournamentId }: 
 
             {/* Pemain */}
             <div>
-              <Label htmlFor="player_id">
+              <Label htmlFor="profile_id">
                 Pemain <span className="text-red-500">*</span>
               </Label>
               {isEdit ? (
                 <select
-                  id="player_id"
-                  value={form.player_id}
-                  onChange={(e) => setField("player_id", e.target.value)}
+                  id="profile_id"
+                  value={form.profile_id}
+                  onChange={(e) => setField("profile_id", e.target.value)}
                   className={FIELD_CLASS}
                   disabled={true}
                 >
                   <option value="">-- Pilih pemain --</option>
-                  {players.map((p) => (
+                  {filteredprofiles.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.full_name} {p.email ? `(${p.email})` : ""}
+                      {p.fullname}
                     </option>
                   ))}
                 </select>
@@ -319,32 +345,32 @@ export default function ParticipantForm({ participantId, defaultTournamentId }: 
                     id="player_add"
                     value=""
                     onChange={(e) => {
-                      if (e.target.value) togglePlayer(e.target.value);
+                      if (e.target.value) toggleProfile(e.target.value);
                     }}
                     className={FIELD_CLASS}
                     disabled={!form.tournament_id}
                   >
                     <option value="">{form.tournament_id ? "-- Tambah pemain --" : "-- Pilih turnamen terlebih dahulu --"}</option>
-                    {players.map((p) => {
+                    {filteredprofiles.map((p) => {
                       const isJoined = existingParticipantIds.has(p.id);
-                      const isSelected = (form.player_ids || []).includes(p.id);
+                      const isSelected = (form.profile_ids || []).includes(p.id);
                       return (
                         <option key={p.id} value={p.id} disabled={isJoined || isSelected}>
-                          {p.full_name} {p.email ? `(${p.email})` : ""} {isJoined ? "(Sudah Bergabung)" : isSelected ? "(Terpilih)" : ""}
+                          {p.fullname} {isJoined ? "(Sudah Bergabung)" : isSelected ? "(Terpilih)" : ""}
                         </option>
                       );
                     })}
                   </select>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {(form.player_ids || []).map((id) => {
-                      const p = players.find((x) => x.id === id);
+                    {(form.profile_ids || []).map((id) => {
+                      const p = profiles.find((x) => x.id === id);
                       if (!p) return null;
                       return (
                         <div key={id} className="flex items-center gap-1.5 bg-brand-50 border border-brand-200 dark:bg-brand-500/10 dark:border-brand-500/20 text-brand-700 dark:text-brand-400 px-2.5 py-1 rounded-lg text-sm">
-                          <span>{p.full_name}</span>
+                          <span>{p.fullname}</span>
                           <button
                             type="button"
-                            onClick={() => togglePlayer(id)}
+                            onClick={() => toggleProfile(id)}
                             className="text-brand-500 hover:text-brand-700 dark:hover:text-brand-300 ml-1"
                           >
                             &times;
@@ -355,8 +381,8 @@ export default function ParticipantForm({ participantId, defaultTournamentId }: 
                   </div>
                 </div>
               )}
-              {errors.player_id && <p className="mt-1.5 text-xs text-red-500">{errors.player_id}</p>}
-              {errors.player_ids && <p className="mt-1.5 text-xs text-red-500">{errors.player_ids}</p>}
+              {errors.profile_id && <p className="mt-1.5 text-xs text-red-500">{errors.profile_id}</p>}
+              {errors.profile_ids && <p className="mt-1.5 text-xs text-red-500">{errors.profile_ids}</p>}
             </div>
           </div>
         </SectionCard>

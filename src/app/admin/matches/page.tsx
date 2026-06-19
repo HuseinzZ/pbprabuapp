@@ -3,15 +3,19 @@ import React, { useState, useEffect, useCallback, Suspense, useMemo } from "reac
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "react-toastify";
-import { Filter, RefreshCw, Loader2, Swords, ArrowRight, Trophy } from "lucide-react";
+import { Filter, Loader2, Swords, ArrowRight, Trophy, ShieldCheck, Activity, Calendar, Zap, CheckCircle2, Clock, Users, Flame, ShieldAlert, Plus } from "lucide-react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import ExportButtons from "@/components/common/ExportButtons";
 import Loader from "@/components/shared/Loader";
-import MatchTable, { type Match } from "@/components/matches/MatchTable";
-import ScoreInputModal from "@/components/matches/ScoreInputModal";
 import DatePicker from "@/components/form/DatePicker";
-import { exportCSV, exportPDF } from "@/lib/utils/export";
+import MatchFilters from "@/components/matches/MatchFilters";
+import MatchTable from "@/components/matches/MatchTable";
+import ScoreInputModal from "@/components/matches/ScoreInputModal";
+import AddMatchModal from "@/components/matches/AddMatchModal";
 import PrintReport, { PrintColumn } from "@/components/common/PrintReport";
+import { exportCSV, exportPDF } from "@/lib/utils/export";
+import ActivityLogs from "@/components/users/ActivityLogs";
+import { type Match } from "@/components/matches/MatchTable";
 
 // ─── Matches Content ───────────────────────────────────────────────────────────
 function MatchesContent() {
@@ -22,14 +26,33 @@ function MatchesContent() {
   const urlGroup = searchParams.get("group") || "";
   const urlStatus = searchParams.get("status") || "";
   const urlPhase = searchParams.get("phase") || "";
-  // Default to today
-  const today = new Date();
-  const defaultDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const urlTournamentDate = searchParams.has("date") ? searchParams.get("date") || "" : defaultDate;
+  const urlTournamentDate = searchParams.has("date") ? searchParams.get("date") || "" : "";
+  const urlTournament = searchParams.get("tournament") || "";
   const [matches, setMatches] = useState<Match[]>([]);
+  const [tournaments, setTournaments] = useState<{id: string, name: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [localSearch, setLocalSearch] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [logs, setLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+    const storedLogs = localStorage.getItem('match_points_logs');
+    if (storedLogs) {
+      try {
+        setLogs(JSON.parse(storedLogs));
+      } catch (err) {
+        setLogs([]);
+      }
+    }
+  }, []);
+
+  const handleClearLogs = useCallback(() => {
+    setLogs([]);
+    localStorage.removeItem('match_points_logs');
+    toast.success("Log aktivitas sesi berhasil dibersihkan!");
+  }, []);
   
   // URL helpers
   const updateParams = useCallback((updates: Record<string, string | null>) => {
@@ -39,7 +62,33 @@ function MatchesContent() {
     });
     router.push(`${pathname}?${params.toString()}`);
   }, [pathname, router, searchParams]);
-  // Removed tournaments fetching logic since dropdown is removed
+  
+  // Fetch tournaments for dropdown
+  useEffect(() => {
+    const fetchTournaments = async () => {
+      const { data } = await supabase
+        .from("tournaments")
+        .select("id, name, start_date, created_at")
+        .order("start_date", { ascending: false })
+        .order("created_at", { ascending: false });
+        
+      if (data) {
+        setTournaments(data);
+        
+        // Auto-select on initial load if no search params are present
+        if (data.length > 0 && Array.from(searchParams.keys()).length === 0) {
+          const params = new URLSearchParams(window.location.search);
+          params.set("tournament", data[0].id);
+          if (data[0].start_date) {
+            params.set("date", data[0].start_date.split("T")[0]);
+          }
+          router.replace(`${pathname}?${params.toString()}`);
+        }
+      }
+    };
+    fetchTournaments();
+  }, [supabase, searchParams, pathname, router]);
+
   // Fetch matches + teams
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -52,7 +101,7 @@ function MatchesContent() {
         team1_id, team2_id,
         teams_team1:teams!team1_id(id, name, is_bye_team),
         teams_team2:teams!team2_id(id, name, is_bye_team),
-        tournaments!inner(name, start_date, tournament_types(name))
+        tournaments!inner(name, start_date, points(name))
       `)
       .order("phase", { ascending: true })
       .order("group_name", { ascending: true })
@@ -65,6 +114,7 @@ function MatchesContent() {
         query = query.gte("tournaments.start_date", startDate).lte("tournaments.start_date", endDate);
       }
     }
+    if (urlTournament) query = query.eq("tournament_id", urlTournament);
     if (urlGroup) query = query.eq("group_name", urlGroup);
     if (urlStatus) query = query.eq("status", urlStatus);
     if (urlPhase) query = query.eq("phase", urlPhase);
@@ -72,7 +122,7 @@ function MatchesContent() {
     if (matchErr) { toast.error(matchErr.message); }
     else { setMatches((matchData as unknown as Match[]) ?? []); }
     if (isRefresh) setRefreshing(false); else setLoading(false);
-  }, [urlTournamentDate, urlGroup, urlStatus, urlPhase, supabase]);
+  }, [urlTournamentDate, urlGroup, urlStatus, urlPhase, urlTournament, supabase]);
   useEffect(() => { fetchData(); }, [fetchData]);
   const groups = [...new Set(matches.filter(m => m.phase === 'RR' || !m.phase).map(m => m.group_name).filter(Boolean))];
 
@@ -103,91 +153,170 @@ function MatchesContent() {
     },
   ];
 
+  const stats = useMemo(() => {
+    return {
+      total: matches.length,
+      completed: matches.filter(m => m.status === 'completed').length,
+      ongoing: matches.filter(m => m.status === 'ongoing').length,
+      scheduled: matches.filter(m => m.status === 'scheduled').length,
+    };
+  }, [matches]);
+
+  const filteredMatches = useMemo(() => {
+    let list = [...matches];
+    
+    const q = localSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter(m => 
+        (m.teams_team1?.name ?? "").toLowerCase().includes(q) ||
+        (m.teams_team2?.name ?? "").toLowerCase().includes(q) ||
+        (m.tournaments?.name ?? "").toLowerCase().includes(q)
+      );
+    }
+    
+    return list;
+  }, [matches, localSearch]);
+
   return (
     <div className="space-y-6">
-      <PageBreadcrumb pageTitle="Jadwal Pertandingan" />
-      <div className="flex items-start justify-end gap-3">
-        <ExportButtons
-          disabled={loading}
-          onExportCSV={() =>
-            exportCSV(
-              "jadwal.csv",
-              ["No", "Turnamen", "Fase", "Grup", "Tim 1", "Skor", "Tim 2", "Status"],
-              matches.map((m, i) => [
-                i + 1,
-                m.tournaments?.name ?? "-",
-                m.phase,
-                m.group_name ?? "-",
-                m.teams_team1?.name ?? "-",
-                m.status === "completed" ? `${m.score_team1} - ${m.score_team2}` : "vs",
-                m.teams_team2?.name ?? "-",
-                m.status ?? "-",
-              ])
-            )
-          }
-          onExportPDF={() => exportPDF("print-matches", "Jadwal_Pertandingan.pdf")}
-        />
-      </div>
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 flex flex-col lg:flex-row lg:items-center lg:flex-wrap xl:flex-nowrap gap-3">
-        {/* Filter Tanggal */}
-        <div className="flex shrink-0 w-15 lg:w-40">
-          <DatePicker
-            value={urlTournamentDate || ""}
-            onChange={(val) => updateParams({ date: val, group: null })}
-            placeholder="Pilih Tanggal"
+      <div className="flex flex-col gap-4">
+        <PageBreadcrumb pageTitle="Jadwal Pertandingan" />
+        <div className="flex items-center justify-end gap-3">
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+          >
+            <Plus className="w-4 h-4" />
+            Tambah Jadwal
+          </button>
+          <ExportButtons
+            disabled={loading}
+            onExportCSV={() =>
+              exportCSV(
+                "jadwal.csv",
+                ["No", "Turnamen", "Fase", "Grup", "Tim 1", "Skor", "Tim 2", "Status"],
+                matches.map((m, i) => [
+                  i + 1,
+                  m.tournaments?.name ?? "-",
+                  m.phase,
+                  m.group_name ?? "-",
+                  m.teams_team1?.name ?? "-",
+                  m.status === "completed" ? `${m.score_team1} - ${m.score_team2}` : "vs",
+                  m.teams_team2?.name ?? "-",
+                  m.status ?? "-",
+                ])
+              )
+            }
+            onExportPDF={() => exportPDF("print-matches", "Jadwal_Pertandingan.pdf")}
           />
         </div>
-        {/* Grup */}
-        {groups.length > 0 && (
-          <div className="flex shrink-0 w-full lg:w-auto">
-            <select
-              value={urlGroup}
-              onChange={e => updateParams({ group: e.target.value })}
-              className="w-full lg:w-auto px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition cursor-pointer"
-            >
-              <option value="">Semua Grup</option>
-              {groups.map(g => (
-                <option key={g} value={g!}>Grup {g}</option>
-              ))}
-            </select>
+      </div>
+      
+      {/* Aggregate Bento Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Total Matches */}
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-sm transition-all duration-250 flex items-center gap-4 group cursor-default">
+          <div className="p-3 bg-slate-100 dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 rounded-lg group-hover:bg-indigo-600 group-hover:text-white dark:group-hover:bg-indigo-500 transition-all duration-250">
+            <Trophy className="w-5 h-5" />
           </div>
-        )}
-        {/* Status */}
-        <div className="flex shrink-0 w-full lg:w-auto">
-          <select
-            value={urlStatus}
-            onChange={e => updateParams({ status: e.target.value })}
-            className="w-full lg:w-auto px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition cursor-pointer"
-          >
-            <option value="">Semua Status</option>
-            <option value="scheduled">Dijadwalkan</option>
-            <option value="ongoing">Berlangsung</option>
-            <option value="completed">Selesai</option>
-          </select>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest leading-none">TOTAL LAGA</p>
+            <p className="text-2xl font-bold text-slate-800 dark:text-white mt-1.5 leading-none">{stats.total}</p>
+          </div>
         </div>
-        {/* Fase */}
-        <div className="flex shrink-0 w-full lg:w-auto">
-          <select
-            value={urlPhase}
-            onChange={e => updateParams({ phase: e.target.value })}
-            className="w-full lg:w-auto px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition cursor-pointer"
-          >
-            <option value="">Semua Fase</option>
-            <option value="RR">Grup (RR)</option>
-            <option value="QF">Perempat Final</option>
-            <option value="SF">Semi Final</option>
-            <option value="3RD">Perebutan Juara 3</option>
-            <option value="F">Final</option>
-          </select>
+
+        {/* Live Matches */}
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 hover:border-red-300 dark:hover:border-red-700 shadow-sm transition-all duration-250 flex items-center gap-4 group cursor-default">
+          <div className="p-3 bg-slate-100 dark:bg-gray-800 text-red-600 dark:text-red-400 rounded-lg group-hover:bg-red-600 group-hover:text-white dark:group-hover:bg-red-500 transition-all duration-250 animate-pulse">
+            <Flame className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest leading-none">BERLANGSUNG</p>
+            <p className="text-2xl font-bold text-slate-800 dark:text-white mt-1.5 leading-none">{stats.ongoing}</p>
+          </div>
+        </div>
+
+        {/* Scheduled Matches */}
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 hover:border-amber-300 dark:hover:border-amber-700 shadow-sm transition-all duration-250 flex items-center gap-4 group cursor-default">
+          <div className="p-3 bg-slate-100 dark:bg-gray-800 text-amber-600 dark:text-amber-400 rounded-lg group-hover:bg-amber-600 group-hover:text-white dark:group-hover:bg-amber-500 transition-all duration-250">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest leading-none">MENUNGGU</p>
+            <p className="text-2xl font-bold text-slate-800 dark:text-white mt-1.5 leading-none">{stats.scheduled}</p>
+          </div>
+        </div>
+
+        {/* Completed */}
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 hover:border-emerald-300 dark:hover:border-emerald-700 shadow-sm transition-all duration-250 flex items-center gap-4 group cursor-default">
+          <div className="p-3 bg-slate-100 dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 rounded-lg group-hover:bg-emerald-600 group-hover:text-white dark:group-hover:bg-emerald-500 transition-all duration-250">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest leading-none">SELESAI</p>
+            <p className="text-2xl font-bold text-slate-800 dark:text-white mt-1.5 leading-none">{stats.completed}</p>
+          </div>
         </div>
       </div>
-      {/* Tabel jadwal */}
-      <MatchTable
-        loading={loading}
-        matches={matches}
-        onInputScore={(m) => setSelectedMatch(m)}
-      />
+
+      {/* Dashboard Grid System */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+        
+        {/* Main List Section (Wide Column) */}
+        <section className="lg:col-span-3 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl shadow-sm flex flex-col">
+          {/* Filters */}
+          <MatchFilters
+            search={localSearch}
+            setSearch={setLocalSearch}
+            status={urlStatus}
+            setStatus={(val) => updateParams({ status: val })}
+            phase={urlPhase}
+            setPhase={(val) => updateParams({ phase: val })}
+            group={urlGroup}
+            setGroup={(val) => updateParams({ group: val })}
+            groups={groups as string[]}
+            tournamentDate={urlTournamentDate}
+            setTournamentDate={(val) => updateParams({ date: val })}
+            tournamentId={urlTournament}
+            setTournamentId={(val) => updateParams({ tournament: val })}
+            tournaments={tournaments}
+          />
+          
+          {/* We wrap Table to blend perfectly with section just like points page */}
+          <div className="[&>div]:border-0 [&>div]:shadow-none [&>div]:rounded-none">
+            <MatchTable
+              loading={loading}
+              matches={filteredMatches}
+              onInputScore={(m) => setSelectedMatch(m)}
+            />
+          </div>
+        </section>
+
+        {/* Quick Info (Slim Column) */}
+        <section className="space-y-6 lg:sticky lg:top-6">
+          <div className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm space-y-4">
+            <h4 className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-brand-500" />
+              Verifikasi & Pencegahan
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-gray-400 leading-relaxed">
+              Seluruh transaksi penyuntingan skor, penggantian tim, dan manipulasi poin telah diamankan menggunakan sistem <strong className="text-slate-800 dark:text-white">Strip Tag HTML (XSS Protection)</strong>.
+            </p>
+            <div className="pt-3 border-t border-slate-100 dark:border-gray-800 text-[11px] font-semibold text-slate-400 dark:text-gray-500 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>Angka skor wajib bulat positif</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>Tim lawan tidak boleh serupa</span>
+              </div>
+            </div>
+          </div>
+
+          <ActivityLogs logs={logs} onClear={handleClearLogs} />
+        </section>
+      </div>
       {/* Modal input skor */}
       <ScoreInputModal
         match={selectedMatch}
@@ -202,6 +331,16 @@ function MatchesContent() {
         columns={printColumns}
         groups={printGroups}
         printId="print-matches"
+      />
+
+      <AddMatchModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSaved={() => {
+          setIsAddModalOpen(false);
+          setRefreshing(true);
+          fetchData(true);
+        }}
       />
     </div>
   );

@@ -1,5 +1,6 @@
-import React from "react";
-import { AlertCircle, Trophy } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { AlertCircle } from "lucide-react";
 import { Tournament, STATUS_CONFIG } from "@/app/admin/tournaments/types";
 import Loader from "@/components/shared/Loader";
 
@@ -18,11 +19,17 @@ export default function DeleteTournamentModal({
   tournament,
   isDeleting,
 }: DeleteTournamentModalProps) {
-  if (!isOpen || !tournament) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !tournament || !mounted) return null;
 
   const sc = STATUS_CONFIG[tournament.status];
 
-  return (
+  return createPortal(
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div
@@ -45,23 +52,14 @@ export default function DeleteTournamentModal({
             </div>
           </div>
 
-          {/* Tournament info card */}
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center shrink-0">
-              <Trophy className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 dark:text-white text-sm">
-                {tournament.name}
-              </p>
-              <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${sc.bg} ${sc.text}`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
-                {sc.label}
-              </span>
-            </div>
-          </div>
+          {/* Body */}
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+            Yakin ingin menghapus turnamen{" "}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              &ldquo;{tournament.name}&rdquo;
+            </span>
+            ?
+          </p>
 
           <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg px-3 py-2 mb-5">
             ⚠️ Semua data terkait (peserta, pertandingan, klasemen) akan ikut terhapus.
@@ -87,6 +85,7 @@ export default function DeleteTournamentModal({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

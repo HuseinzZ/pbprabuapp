@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState<{ id: string; name: string; email: string; avatar_url: string | null } | null>(null);
+  const [user, setUser] = useState<{ id: string; name: string; email: string; avatar_url: string | null; role: string } | null>(null);
   const supabase = createClient();
   const router = useRouter();
 
@@ -18,16 +18,17 @@ export default function UserDropdown() {
 
       if (session?.user) {
         const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name, avatar_url")
-          .eq("id", session.user.id)
+          .from("profile")
+          .select("fullname, avatar_url, role")
+          .eq("user_id", session.user.id)
           .single();
 
         setUser({
           id: session.user.id,
-          name: profile?.full_name || session.user.user_metadata?.full_name || 'User',
+          name: profile?.fullname || session.user.user_metadata?.full_name || 'User',
           email: session.user.email || '',
           avatar_url: profile?.avatar_url || null,
+          role: profile?.role || 'user',
         });
       }
     }
@@ -125,7 +126,7 @@ export default function UserDropdown() {
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
-              href={user?.id ? `/admin/profile/${user.id}` : "#"}
+              href={user?.id ? (user.role === 'admin' ? `/admin/profile/${user.id}` : `/user/profile`) : "#"}
               className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
             >
               <svg
@@ -150,7 +151,7 @@ export default function UserDropdown() {
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
-              href={user?.id ? `/admin/reset-password/${user.id}` : "#"}
+              href={user?.id ? (user.role === 'admin' ? `/admin/reset-password/${user.id}` : `/user/profile`) : "#"}
               className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
             >
               <svg

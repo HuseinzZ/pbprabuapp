@@ -148,31 +148,126 @@ export function isAllRRComplete(matches: MatchRow[], teams: TeamRow[]): boolean 
   return groups.length > 0 && groups.every((g) => isGroupRRComplete(matches, g));
 }
 
-// ─── Check if knockout phase already exists ────────────────────────────────────
+export const KNOCKOUT_PHASES = ['RR', 'R32', 'R16', 'QF', 'SF', 'F'];
 
-export function hasKnockoutPhase(matches: MatchRow[]): boolean {
-  return matches.some((m) => m.phase === 'SF' || m.phase === 'F' || m.phase === '3RD');
+function getPhaseIndex(phase: string | null): number {
+  if (!phase) return 0;
+  const idx = KNOCKOUT_PHASES.indexOf(phase);
+  return idx === -1 ? 0 : idx;
 }
 
-export function hasFinalPhase(matches: MatchRow[]): boolean {
-  return matches.some((m) => m.phase === 'F');
+export function getCurrentDeepestPhase(matches: MatchRow[]): string {
+  let deepest = 0;
+  for (const m of matches) {
+    if (m.phase === 'F') return 'F';
+    const idx = getPhaseIndex(m.phase);
+    if (idx > deepest) deepest = idx;
+  }
+  return KNOCKOUT_PHASES[deepest];
 }
 
-export function isSFComplete(matches: MatchRow[]): boolean {
-  const sfMatches = matches.filter((m) => m.phase === 'SF');
-  return sfMatches.length > 0 && sfMatches.every((m) => m.status === 'completed');
+export function getNextPhaseLabel(teamCount: number): string {
+  if (teamCount > 16) return 'R32';
+  if (teamCount > 8) return 'R16';
+  if (teamCount > 4) return 'QF';
+  if (teamCount > 2) return 'SF';
+  return 'F';
 }
 
-// ─── Generate Semi Final Matches ───────────────────────────────────────────────
+export function isPhaseComplete(matches: MatchRow[], phase: string, teams: TeamRow[]): boolean {
+  if (phase === 'RR') {
+    return isAllRRComplete(matches, teams);
+  }
+  const phaseMatches = matches.filter((m) => m.phase === phase);
+  if (phaseMatches.length === 0) return false;
+  return phaseMatches.every((m) => m.status === 'completed' || m.is_bye);
+}
 
-export async function generateSemiFinals(tournamentId: string) {
+// ─── Generate Generic First Knockout Bracket ─────────────────────────────
+
+export function generateFirstKnockoutRoundInserts(
+  tournamentId: string,
+  sessionId: string | null,
+  activeTeams: any[],
+  category: string | null
+): any[] {
+  const teamCount = activeTeams.length;
+  if (teamCount < 2) return [];
+
+  let P = 1;
+  while (P < teamCount) P *= 2;
+
+  const byes = P - teamCount;
+  const matchCount = P / 2;
+  const phase = getNextPhaseLabel(P);
+
+  const matchHasBye = new Array(matchCount).fill(false);
+  if (byes > 0) matchHasBye[0] = true;
+  if (byes > 1) matchHasBye[matchCount - 1] = true;
+  if (byes > 2) matchHasBye[Math.floor(matchCount / 2)] = true;
+  if (byes > 3) matchHasBye[Math.floor(matchCount / 2) - 1] = true;
+  
+  let currentByes = matchHasBye.filter(Boolean).length;
+  let idx = 0;
+  while (currentByes < byes) {
+    if (!matchHasBye[idx]) {
+      matchHasBye[idx] = true;
+      currentByes++;
+    }
+    idx++;
+  }
+
+  const matchInserts: any[] = [];
+  let teamIdx = 0;
+
+  for (let m = 1; m <= matchCount; m++) {
+    if (matchHasBye[m - 1]) {
+      const t = activeTeams[teamIdx++];
+      matchInserts.push({
+        tournament_id: tournamentId,
+        spin_session_id: sessionId,
+        phase,
+        group_name: null,
+        round_number: 1,
+        match_number: m,
+        team1_id: t.id,
+        team2_id: null,
+        status: 'completed',
+        winner_team_id: t.id,
+        is_bye: true,
+        category: category || null
+      });
+    } else {
+      const t1 = activeTeams[teamIdx++];
+      const t2 = activeTeams[teamIdx++];
+      matchInserts.push({
+        tournament_id: tournamentId,
+        spin_session_id: sessionId,
+        phase,
+        group_name: null,
+        round_number: 1,
+        match_number: m,
+        team1_id: t1.id,
+        team2_id: t2.id,
+        status: 'scheduled',
+        is_bye: false,
+        category: category || null
+      });
+    }
+  }
+
+  return matchInserts;
+}
+
+// ─── Generate Next Knockout Phase ───────────────────────────────────────────────
+
+export async function generateNextKnockoutPhase(tournamentId: string) {
   const supabase = createClient();
 
   try {
-    // Fetch all matches and teams
     const { data: matchesData, error: mErr } = await supabase
       .from('matches')
-      .select('id, phase, group_name, team1_id, team2_id, score_team1, score_team2, winner_team_id, status, is_bye')
+      .select('id, phase, group_name, team1_id, team2_id, score_team1, score_team2, winner_team_id, status, is_bye, match_number')
       .eq('tournament_id', tournamentId);
     if (mErr) throw new Error(mErr.message);
 
@@ -185,71 +280,62 @@ export async function generateSemiFinals(tournamentId: string) {
     const matches = (matchesData ?? []) as MatchRow[];
     const teams = (teamsData ?? []) as TeamRow[];
 
-    // Safety checks
-    if (!isAllRRComplete(matches, teams)) {
-      throw new Error('Semua pertandingan RR harus selesai terlebih dahulu.');
-    }
-    if (hasKnockoutPhase(matches)) {
-      throw new Error('Babak knockout sudah pernah di-generate.');
+    const deepestPhase = getCurrentDeepestPhase(matches);
+
+    if (deepestPhase === 'F') {
+      throw new Error('Babak Final sudah pernah di-generate.');
     }
 
-    const standings = computeGroupStandings(matches, teams);
-    const groups = Object.keys(standings).sort();
+    if (!isPhaseComplete(matches, deepestPhase, teams)) {
+      throw new Error(`Semua pertandingan pada babak ${deepestPhase} harus selesai terlebih dahulu.`);
+    }
 
-    let sfInserts: KnockoutMatchInsert[] = [];
+    let matchInserts: KnockoutMatchInsert[] = [];
 
-    if (groups.length >= 2) {
-      // Multi-group: A1 vs B2, B1 vs A2 (cross-over)
-      // If more than 2 groups, take top 2 from each and create bracket
+    if (deepestPhase === 'RR') {
+      // ─── Generate Bracket dari Babak Grup ───
+      const standings = computeGroupStandings(matches, teams);
+      const groups = Object.keys(standings).sort();
+
       const qualifiedTeams: { teamId: string; groupRank: number; groupName: string }[] = [];
       for (const g of groups) {
         const top2 = standings[g].slice(0, 2);
         top2.forEach((s) => qualifiedTeams.push({ teamId: s.teamId, groupRank: s.position, groupName: s.groupName }));
       }
 
-      if (qualifiedTeams.length === 4) {
+      if (qualifiedTeams.length < 2) throw new Error('Tidak cukup tim untuk babak knockout.');
+
+      const nextPhase = getNextPhaseLabel(qualifiedTeams.length);
+
+      if (groups.length === 1) {
+        // Single group: Juara 1 vs Juara 2 di Final
+        const s = standings[groups[0]];
+        if (s.length >= 2) {
+          matchInserts = [
+            { tournament_id: tournamentId, phase: 'F', group_name: null, round_number: 1, match_number: 1, team1_id: s[0].teamId, team2_id: s[1].teamId, status: 'scheduled', is_bye: false },
+          ];
+        }
+      } else if (groups.length === 2) {
         // 2 groups: A1 vs B2, B1 vs A2
         const a1 = qualifiedTeams.find((t) => t.groupName === groups[0] && t.groupRank === 1)!;
         const a2 = qualifiedTeams.find((t) => t.groupName === groups[0] && t.groupRank === 2)!;
         const b1 = qualifiedTeams.find((t) => t.groupName === groups[1] && t.groupRank === 1)!;
         const b2 = qualifiedTeams.find((t) => t.groupName === groups[1] && t.groupRank === 2)!;
 
-        sfInserts = [
-          {
-            tournament_id: tournamentId,
-            phase: 'SF',
-            group_name: null,
-            round_number: 1,
-            match_number: 1,
-            team1_id: a1.teamId,
-            team2_id: b2.teamId,
-            status: 'scheduled',
-            is_bye: false,
-          },
-          {
-            tournament_id: tournamentId,
-            phase: 'SF',
-            group_name: null,
-            round_number: 1,
-            match_number: 2,
-            team1_id: b1.teamId,
-            team2_id: a2.teamId,
-            status: 'scheduled',
-            is_bye: false,
-          },
+        matchInserts = [
+          { tournament_id: tournamentId, phase: nextPhase, group_name: null, round_number: 1, match_number: 1, team1_id: a1.teamId, team2_id: b2.teamId, status: 'scheduled', is_bye: false },
+          { tournament_id: tournamentId, phase: nextPhase, group_name: null, round_number: 1, match_number: 2, team1_id: b1.teamId, team2_id: a2.teamId, status: 'scheduled', is_bye: false },
         ];
       } else {
-        // More than 2 groups: seed bracket by group rank
-        // Sort: group rank 1 first, then alternating
+        // More than 2 groups: rank 1 vs rank 2 (silang)
         const rank1 = qualifiedTeams.filter((t) => t.groupRank === 1).sort((a, b) => a.groupName.localeCompare(b.groupName));
         const rank2 = qualifiedTeams.filter((t) => t.groupRank === 2).sort((a, b) => a.groupName.localeCompare(b.groupName)).reverse();
 
-        // Pair rank1[i] vs rank2[i]
-        const sfCount = Math.min(rank1.length, rank2.length);
-        for (let i = 0; i < sfCount; i++) {
-          sfInserts.push({
+        const matchCount = Math.min(rank1.length, rank2.length);
+        for (let i = 0; i < matchCount; i++) {
+          matchInserts.push({
             tournament_id: tournamentId,
-            phase: 'SF',
+            phase: nextPhase,
             group_name: null,
             round_number: 1,
             match_number: i + 1,
@@ -261,155 +347,54 @@ export async function generateSemiFinals(tournamentId: string) {
         }
       }
     } else {
-      // Single group: #1 vs #4, #2 vs #3
-      const g = groups[0];
-      const s = standings[g];
-      if (s.length === 4) {
-        // Only 4 teams: top 2 go straight to Final
-        sfInserts = [
-          {
-            tournament_id: tournamentId,
-            phase: 'F',
-            group_name: null,
-            round_number: 1,
-            match_number: 1,
-            team1_id: s[0].teamId,
-            team2_id: s[1].teamId,
-            status: 'scheduled',
-            is_bye: false,
-          },
-        ];
-      } else if (s.length > 4) {
-        sfInserts = [
-          {
-            tournament_id: tournamentId,
-            phase: 'SF',
-            group_name: null,
-            round_number: 1,
-            match_number: 1,
-            team1_id: s[0].teamId,
-            team2_id: s[3].teamId,
-            status: 'scheduled',
-            is_bye: false,
-          },
-          {
-            tournament_id: tournamentId,
-            phase: 'SF',
-            group_name: null,
-            round_number: 1,
-            match_number: 2,
-            team1_id: s[1].teamId,
-            team2_id: s[2].teamId,
-            status: 'scheduled',
-            is_bye: false,
-          },
-        ];
-      } else if (s.length >= 2) {
-        // Only 2-3 teams: direct final
-        sfInserts = [
-          {
-            tournament_id: tournamentId,
-            phase: 'F',
-            group_name: null,
-            round_number: 1,
-            match_number: 1,
-            team1_id: s[0].teamId,
-            team2_id: s[1].teamId,
-            status: 'scheduled',
-            is_bye: false,
-          },
-        ];
-      }
-    }
+      // ─── Generate Next Knockout dari Babak Sebelumnya ───
+      const currentPhaseMatches = matches.filter((m) => m.phase === deepestPhase);
+      const winners: string[] = [];
+      const losers: string[] = [];
 
-    if (sfInserts.length === 0) {
-      throw new Error('Tidak cukup tim untuk babak knockout.');
-    }
+      // Sortir berdasarkan match_number agar pasangan berurutan (Pemenang M1 vs Pemenang M2)
+      // Note: match_number mungkin ada di tipe lain, kita asumsikan ada atau urut id.
+      currentPhaseMatches.sort((a: any, b: any) => (a.match_number || 0) - (b.match_number || 0));
 
-    const { error: insertErr } = await supabase.from('matches').insert(sfInserts);
-    if (insertErr) throw new Error(insertErr.message);
-
-    return { success: true, matchesCreated: sfInserts.length, phase: sfInserts[0].phase };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
-  }
-}
-
-// ─── Generate Final from SF results ────────────────────────────────────────────
-
-export async function generateFinal(tournamentId: string) {
-  const supabase = createClient();
-
-  try {
-    const { data: matchesData, error: mErr } = await supabase
-      .from('matches')
-      .select('id, phase, group_name, team1_id, team2_id, score_team1, score_team2, winner_team_id, status, is_bye')
-      .eq('tournament_id', tournamentId);
-    if (mErr) throw new Error(mErr.message);
-
-    const matches = (matchesData ?? []) as MatchRow[];
-    const sfMatches = matches.filter((m) => m.phase === 'SF');
-
-    if (sfMatches.length === 0) {
-      throw new Error('Tidak ada pertandingan Semi Final.');
-    }
-    if (!sfMatches.every((m) => m.status === 'completed')) {
-      throw new Error('Semua pertandingan Semi Final harus selesai terlebih dahulu.');
-    }
-    if (hasFinalPhase(matches)) {
-      throw new Error('Babak Final sudah pernah di-generate.');
-    }
-
-    // Winners go to Final, losers go to 3rd place
-    const winners: string[] = [];
-    const losers: string[] = [];
-
-    sfMatches.forEach((m) => {
-      if (m.winner_team_id) {
-        winners.push(m.winner_team_id);
-        const loserId = m.team1_id === m.winner_team_id ? m.team2_id : m.team1_id;
-        if (loserId) losers.push(loserId);
-      }
-    });
-
-    if (winners.length < 2) {
-      throw new Error('Minimal 2 pemenang SF dibutuhkan untuk Final.');
-    }
-
-    const finalInserts: KnockoutMatchInsert[] = [
-      {
-        tournament_id: tournamentId,
-        phase: 'F',
-        group_name: null,
-        round_number: 1,
-        match_number: 1,
-        team1_id: winners[0],
-        team2_id: winners[1],
-        status: 'scheduled',
-        is_bye: false,
-      },
-    ];
-
-    // 3rd place match if we have 2 losers
-    if (losers.length >= 2) {
-      finalInserts.push({
-        tournament_id: tournamentId,
-        phase: '3RD',
-        group_name: null,
-        round_number: 1,
-        match_number: 1,
-        team1_id: losers[0],
-        team2_id: losers[1],
-        status: 'scheduled',
-        is_bye: false,
+      currentPhaseMatches.forEach((m) => {
+        if (m.winner_team_id) {
+          winners.push(m.winner_team_id);
+          const loserId = m.team1_id === m.winner_team_id ? m.team2_id : m.team1_id;
+          if (loserId) losers.push(loserId);
+        }
       });
+
+      if (winners.length < 2) throw new Error('Minimal 2 pemenang dibutuhkan untuk babak selanjutnya.');
+
+      const nextPhase = getNextPhaseLabel(winners.length);
+
+      for (let i = 0; i < winners.length; i += 2) {
+        if (i + 1 < winners.length) {
+          matchInserts.push({
+            tournament_id: tournamentId,
+            phase: nextPhase,
+            group_name: null,
+            round_number: 1,
+            match_number: (i / 2) + 1,
+            team1_id: winners[i],
+            team2_id: winners[i + 1],
+            status: 'scheduled',
+            is_bye: false,
+          });
+        }
+      }
+
+
     }
 
-    const { error: insertErr } = await supabase.from('matches').insert(finalInserts);
+    if (matchInserts.length === 0) throw new Error('Tidak cukup tim untuk babak selanjutnya.');
+
+    const { error: insertErr } = await supabase.from('matches').insert(matchInserts);
     if (insertErr) throw new Error(insertErr.message);
 
-    return { success: true, matchesCreated: finalInserts.length };
+    return { success: true, matchesCreated: matchInserts.length, phase: matchInserts[0].phase };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
+

@@ -1,120 +1,122 @@
 "use client";
-import React, { useState, useEffect, useCallback, Suspense } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import React, { useState, useEffect, useCallback, Suspense, useMemo } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Tournament, FilterStatus } from "./types";
+import { Tournament, FilterStatus, STATUS_CONFIG } from "./types";
 import TournamentTable from "@/components/tournaments/TournamentTable";
 import TournamentFilters from "@/components/tournaments/TournamentFilters";
-import DeleteTournamentModal from "@/components/tournaments/DeleteTournamentModal";
+import SummaryStats from "@/components/tournaments/SummaryStats";
+import ActivityLogs from "@/components/users/ActivityLogs";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import ExportButtons from "@/components/common/ExportButtons";
 import Loader from "@/components/shared/Loader";
-import { exportCSV, exportPDF } from "@/lib/utils/export";
+import { exportCSV, exportPDF, exportJSON } from "@/lib/utils/export";
 import PrintReport, { PrintColumn } from "@/components/common/PrintReport";
-// ─── Content ──────────────────────────────────────────────────────────────────
+import DeleteTournamentModal from "@/components/tournaments/DeleteTournamentModal";
+import { ShieldAlert } from "lucide-react";
+import { toast } from "react-toastify";
+
 function TournamentsPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const supabase = createClient();
-  // URL state
+  
+  const urlFilter = (searchParams.get("status") as FilterStatus) || "all";
   const urlSearch = searchParams.get("search") || "";
-  const urlStatus = (searchParams.get("status") as FilterStatus) || "all";
-  const urlTournamentDate = searchParams.get("date") || "";
   const urlPageSize = Number(searchParams.get("size")) || 10;
   const urlPage = Number(searchParams.get("page")) || 1;
-  const action = searchParams.get("action");
-  const actionId = searchParams.get("id");
+  const urlDate = searchParams.get("date") || "";
+  const urlSortBy = searchParams.get("sort") || "date_desc";
+
   const [localSearch, setLocalSearch] = useState(urlSearch);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<Tournament | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  // ─── URL helpers ──────────────────────────────────────────────────────────
-  const updateQueryParams = useCallback(
-    (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString());
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value === null || value === "" || (key === "page" && value === "1")) {
-          params.delete(key);
-        } else {
-          params.set(key, value);
-        }
-      });
-      router.push(`${pathname}?${params.toString()}`);
-    },
-    [pathname, router, searchParams]
-  );
-  // ─── Debounce search ──────────────────────────────────────────────────────
+  const [logs, setLogs] = useState<any[]>([]);
+
   useEffect(() => {
-    const t = setTimeout(() => {
+    const storedLogs = localStorage.getItem('manajemen_turnamen_logs');
+    if (storedLogs) {
+      try {
+        setLogs(JSON.parse(storedLogs));
+      } catch (err) {
+        setLogs([]);
+      }
+    }
+  }, []);
+
+  const addLog = useCallback((actionText: string, type: string) => {
+    const newLog = {
+      id: `log-${Date.now()}`,
+      action: actionText,
+      timestamp: new Date().toISOString(),
+      type
+    };
+    setLogs((prev) => {
+      const updatedLogs = [...prev, newLog].slice(-50);
+      localStorage.setItem('manajemen_turnamen_logs', JSON.stringify(updatedLogs));
+      return updatedLogs;
+    });
+  }, []);
+
+  const handleClearLogs = useCallback(() => {
+    setLogs([]);
+    localStorage.removeItem('manajemen_turnamen_logs');
+    toast.success("Log aktivitas sesi berhasil dibersihkan!");
+  }, []);
+
+  const updateQueryParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === "" || (key === "page" && value === "1")) {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    });
+    router.push(`${pathname}?${params.toString()}`);
+  }, [pathname, router, searchParams]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
       if (localSearch !== urlSearch) {
         updateQueryParams({ search: localSearch, page: "1" });
       }
     }, 500);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timeoutId);
   }, [localSearch, urlSearch, updateQueryParams]);
-  // ─── Fetch ────────────────────────────────────────────────────────────────
+
   const fetchTournaments = useCallback(async () => {
     setLoading(true);
-    
-    // Sync statuses before fetching
     const { syncTournamentStatuses } = await import("@/lib/utils/tournamentStatus");
     await syncTournamentStatuses();
-    let query = supabase
+    
+    const query = supabase
       .from("tournaments")
-      .select("*, tournament_types(name)")
+      .select("*, points(name)")
       .order("start_date", { ascending: false });
-    if (urlStatus !== "all") query = query.eq("status", urlStatus);
-    if (urlTournamentDate) {
-      const [year, month, day] = urlTournamentDate.split("-");
-      if (year && month && day) {
-        const startDate = new Date(Number(year), Number(month) - 1, Number(day));
-        const endDate = new Date(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999);
-        query = query.gte("start_date", startDate.toISOString()).lte("start_date", endDate.toISOString());
-      }
-    }
+      
     const { data } = await query;
     setTournaments((data as Tournament[]) ?? []);
     setLoading(false);
-  }, [urlStatus, urlTournamentDate, supabase]);
+  }, [supabase]);
+
   useEffect(() => {
     fetchTournaments();
   }, [fetchTournaments]);
-  // ─── Derived ──────────────────────────────────────────────────────────────
-  const filtered = tournaments.filter(
-    (t) =>
-      t.name.toLowerCase().includes(urlSearch.toLowerCase()) ||
-      (t.location ?? "").toLowerCase().includes(urlSearch.toLowerCase()) ||
-      (t.tournament_types?.name ?? "").toLowerCase().includes(urlSearch.toLowerCase())
-  );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / urlPageSize));
-  const paginated = filtered.slice(
-    (urlPage - 1) * urlPageSize,
-    urlPage * urlPageSize
-  );
-  const selectedTournament = tournaments.find((t) => t.id === actionId) || null;
-  // ─── Handlers ─────────────────────────────────────────────────────────────
-  const closeModal = () => updateQueryParams({ action: null, id: null });
-  const handleDelete = async () => {
-    if (!selectedTournament) return;
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
     setIsDeleting(true);
-    await supabase.from("tournaments").delete().eq("id", selectedTournament.id);
+    await supabase.from("tournaments").delete().eq("id", deleteTarget.id);
+    addLog(`Sistem menghapus data turnamen ${deleteTarget.name}`, 'delete');
+    toast.success("Berhasil menghapus turnamen!");
     setIsDeleting(false);
-    closeModal();
+    setDeleteTarget(null);
     fetchTournaments();
-  };
-  // ─── Render ───────────────────────────────────────────────────────────────
-  const printColumns: PrintColumn[] = [
-    { key: "no", label: "No", width: "5%" },
-    { key: "name", label: "Nama", width: "20%" },
-    { key: "type", label: "Tipe", width: "15%" },
-    { key: "status", label: "Status", width: "10%", align: "center" },
-    { key: "location", label: "Lokasi", width: "15%" },
-    { key: "startDate", label: "Mulai", width: "10%" },
-    { key: "endDate", label: "Selesai", width: "10%" },
-    { key: "maxParticipants", label: "Max", width: "5%", align: "center" },
-    { key: "prize", label: "Hadiah", width: "10%", align: "right" },
-  ];
+  }
 
   const formatRupiah = (angka: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -124,21 +126,66 @@ function TournamentsPageContent() {
     }).format(angka);
   };
 
+  const filteredTournaments = useMemo(() => {
+    let list = [...tournaments];
+    
+    const q = urlSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter(t => 
+        t.name.toLowerCase().includes(q) || 
+        (t.location ?? "").toLowerCase().includes(q) || 
+        (t.points?.name ?? "").toLowerCase().includes(q)
+      );
+    }
+    
+    if (urlFilter !== 'all') {
+      list = list.filter(t => t.status === urlFilter);
+    }
+
+    if (urlDate) {
+      list = list.filter(t => t.start_date && t.start_date.startsWith(urlDate));
+    }
+
+    list.sort((a, b) => {
+      switch (urlSortBy) {
+        case "date_desc": return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
+        case "date_asc": return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+        case "name_asc": return a.name.localeCompare(b.name);
+        case "name_desc": return b.name.localeCompare(a.name);
+        case "prize_desc": return (b.prize_pool || 0) - (a.prize_pool || 0);
+        default: return 0;
+      }
+    });
+    
+    return list;
+  }, [tournaments, urlSearch, urlFilter, urlDate, urlSortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTournaments.length / urlPageSize));
+  const paginatedTournaments = filteredTournaments.slice((urlPage - 1) * urlPageSize, urlPage * urlPageSize);
+
+  const printColumns: PrintColumn[] = [
+    { key: "no", label: "No", width: "5%" },
+    { key: "name", label: "Nama Turnamen", width: "25%" },
+    { key: "type", label: "Kategori", width: "15%" },
+    { key: "status", label: "Status", width: "10%", align: "center" },
+    { key: "location", label: "Lokasi", width: "20%" },
+    { key: "startDate", label: "Mulai", width: "15%" },
+    { key: "prize", label: "Hadiah", width: "10%", align: "right" }
+  ];
+
   const printGroups = [
     {
-      name: `Daftar Turnamen (${filtered.length} Turnamen)`,
-      rows: filtered.map((t, i) => ({
+      name: `Daftar Turnamen (${filteredTournaments.length} Turnamen)`,
+      rows: filteredTournaments.map((t, i) => ({
         no: i + 1,
         name: t.name,
-        type: t.tournament_types?.name ?? "-",
+        type: t.points?.name ?? "-",
         status: t.status,
         location: t.location ?? "-",
         startDate: new Date(t.start_date).toLocaleDateString("id-ID"),
-        endDate: new Date(t.end_date).toLocaleDateString("id-ID"),
-        maxParticipants: t.max_participants ?? "-",
         prize: t.prize_pool ? formatRupiah(t.prize_pool) : "-",
       })),
-    },
+    }
   ];
 
   if (loading && tournaments.length === 0) {
@@ -148,75 +195,124 @@ function TournamentsPageContent() {
       </div>
     );
   }
+
   return (
     <div className="space-y-6">
-      <PageBreadcrumb pageTitle="Manajemen Turnamen" />
-      <div className="flex items-start justify-end gap-3">
-        <ExportButtons
-          disabled={loading}
-          onExportCSV={() =>
-            exportCSV(
+      <div className="flex flex-col gap-4">
+        <PageBreadcrumb pageTitle="Turnamen" />
+        <div className="flex items-center justify-end">
+          <ExportButtons
+            disabled={loading || tournaments.length === 0}
+            onExportCSV={() => exportCSV(
               "turnamen.csv",
-              ["No", "Nama", "Tipe", "Status", "Lokasi", "Tanggal Mulai", "Tanggal Selesai", "Peserta Maks", "Hadiah"],
-              filtered.map((t, i) => [
-                i + 1,
-                t.name,
-                t.tournament_types?.name ?? "-",
-                t.status,
-                t.location ?? "-",
-                new Date(t.start_date).toLocaleDateString("id-ID"),
-                new Date(t.end_date).toLocaleDateString("id-ID"),
-                t.max_participants ?? "-",
-                t.prize_pool ?? 0,
+              ["No", "Nama", "Tipe", "Status", "Lokasi", "Tanggal Mulai", "Peserta Maks", "Hadiah"],
+              filteredTournaments.map((t, i) => [
+                i + 1, t.name, t.points?.name ?? "-", t.status, t.location ?? "-", 
+                new Date(t.start_date).toLocaleDateString("id-ID"), 
+                t.max_participants ?? "-", t.prize_pool ?? 0,
               ])
-            )
-          }
-          onExportPDF={() => exportPDF("print-tournaments", "Turnamen.pdf")}
-        />
+            )}
+            onExportJSON={() => exportJSON(
+              "turnamen.json", 
+              filteredTournaments.map((t, i) => ({
+                no: i + 1,
+                name: t.name,
+                type: t.points?.name ?? "-",
+                status: t.status,
+                location: t.location ?? "-",
+                startDate: new Date(t.start_date).toLocaleDateString("id-ID"),
+                maxParticipants: t.max_participants ?? "-",
+                prize: t.prize_pool ?? 0,
+              }))
+            )}
+            onExportPDF={() => exportPDF("print-tournaments", "Turnamen.pdf")}
+          />
+        </div>
       </div>
-      <TournamentFilters
-        search={localSearch}
-        setSearch={setLocalSearch}
-        status={urlStatus}
-        setStatus={(val) => updateQueryParams({ status: val, page: "1" })}
-        tournamentDate={urlTournamentDate}
-        setTournamentDate={(val) => updateQueryParams({ date: val, page: "1" })}
-        pageSize={urlPageSize}
-        setPageSize={(val) =>
-          updateQueryParams({ size: val.toString(), page: "1" })
-        }
-      />
-      <TournamentTable
-        loading={loading}
-        tournaments={paginated}
-        currentPage={urlPage}
-        pageSize={urlPageSize}
-        totalPages={totalPages}
-        totalItems={filtered.length}
-        filter={urlStatus}
-        onPageChange={(page) => updateQueryParams({ page: page.toString() })}
-        onEdit={(t) => router.push(`/admin/tournaments/edit/${t.id}`)}
-        onDelete={(t) => updateQueryParams({ action: "delete", id: t.id })}
+
+      {/* Aggregate Bento Metrics */}
+      <SummaryStats tournaments={tournaments} />
+
+      {/* Dashboard Grid System */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+        
+        {/* Main List Section (Wide Column) */}
+        <section className="lg:col-span-3 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl shadow-sm flex flex-col">
+          <TournamentFilters
+            search={localSearch}
+            setSearch={setLocalSearch}
+            status={urlFilter}
+            setStatus={(val) => updateQueryParams({ status: val, page: "1" })}
+            sortBy={urlSortBy}
+            setSortBy={(val) => updateQueryParams({ sort: val, page: "1" })}
+            tournamentDate={urlDate}
+            setTournamentDate={(val) => updateQueryParams({ date: val, page: "1" })}
+            pageSize={urlPageSize}
+            setPageSize={(val) => updateQueryParams({ size: val.toString(), page: "1" })}
+          />
+          {/* We wrap Table to hide its internal borders/rounded corners to blend with the section */}
+          <div className="[&>div]:border-0 [&>div]:shadow-none [&>div]:rounded-none">
+            <TournamentTable
+              loading={loading}
+              tournaments={paginatedTournaments}
+              filter={urlFilter}
+              currentPage={urlPage}
+              pageSize={urlPageSize}
+              totalPages={totalPages}
+              totalItems={filteredTournaments.length}
+              onPageChange={(page) => updateQueryParams({ page: page.toString() })}
+              onEdit={(t) => router.push(`/admin/tournaments/edit/${t.id}`)}
+              onDelete={(t) => setDeleteTarget(t)}
+            />
+          </div>
+        </section>
+
+        {/* Quick Info (Slim Column) */}
+        <section className="space-y-6 lg:sticky lg:top-6">
+          <div className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm space-y-4">
+            <h4 className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-brand-500" />
+              Keamanan & Sinkronisasi
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-gray-400 leading-relaxed">
+              Manajemen status turnamen, registrasi, dan kontrol turnamen diatur pada halaman ini. Status diperbarui secara otomatis berdasarkan tanggal.
+            </p>
+            <div className="pt-3 border-t border-slate-100 dark:border-gray-800 text-[11px] font-semibold text-slate-400 dark:text-gray-500 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>Auto-sync Status Aktif</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>Level Akses Terproteksi (Admin)</span>
+              </div>
+            </div>
+          </div>
+          
+          <ActivityLogs logs={logs} onClear={handleClearLogs} />
+        </section>
+
+      </div>
+
+      <DeleteTournamentModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        tournament={deleteTarget}
+        isDeleting={isDeleting}
       />
 
       <PrintReport
         title="Daftar Turnamen PB Prabu"
-        subtitle={urlStatus !== "all" ? `Filter Status: ${urlStatus.toUpperCase()}` : "Semua Status"}
+        subtitle={urlFilter !== "all" ? `Filter Status: ${STATUS_CONFIG[urlFilter as Exclude<FilterStatus, "all">]?.label.toUpperCase()}` : "Semua Status"}
         columns={printColumns}
         groups={printGroups}
         printId="print-tournaments"
       />
-      <DeleteTournamentModal
-        isOpen={action === "delete"}
-        onClose={closeModal}
-        onConfirm={handleDelete}
-        tournament={selectedTournament}
-        isDeleting={isDeleting}
-      />
     </div>
   );
 }
-// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function TournamentsPage() {
   return (
     <Suspense fallback={<div className="p-6"><Loader /></div>}>
