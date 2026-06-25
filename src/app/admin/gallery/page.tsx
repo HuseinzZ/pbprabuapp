@@ -237,7 +237,7 @@ export default function GalleryDashboard() {
       sortBy: 'date_desc'
     });
     setCurrentPage(1);
-    toast.info('Seluruh filter pencarian diatur ulang.');
+    toast.info('Seluruh filter berhasil dihapus!');
   };
 
   const processedItems = useMemo(() => {
@@ -405,7 +405,7 @@ export default function GalleryDashboard() {
           <section className="lg:col-span-3 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden flex flex-col">
             
             {/* Filter and Control Area */}
-            <div className="p-5 border-b border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-900 space-y-4">
+            <div className="p-5 border-b border-slate-200 dark:border-gray-900 bg-slate-50 dark:bg-gray-800 space-y-4">
               <div className="flex flex-col md:flex-row items-center gap-3">
                 {/* Search Bar */}
                 <div className="relative w-full md:flex-1">
@@ -418,7 +418,7 @@ export default function GalleryDashboard() {
                     placeholder="Cari berdasarkan judul, fotografer, deskripsi..."
                     value={filters.query}
                     onChange={(e) => handleFilterChange({ query: e.target.value })}
-                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none rounded text-xs transition-all dark:text-white"
+                    className="w-full pl-9 pr-10 py-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 focus:border-brand-500 dark:focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:focus:ring-brand-500/20 outline-none rounded-lg text-xs transition-all dark:text-white"
                   />
                   {filters.query && (
                     <button
@@ -431,13 +431,13 @@ export default function GalleryDashboard() {
                 </div>
 
                 {/* Filter counts or clear trigger */}
-                {(filters.category !== '' || filters.status !== '' || filters.query !== '') && (
+                {(filters.category !== '' || filters.status !== '' || filters.query !== '' || filters.sortBy !== 'date_desc') && (
                   <button
                     onClick={handleClearFilters}
                     className="text-[10px] uppercase tracking-wider font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 shrink-0 hover:underline cursor-pointer"
                   >
                     <SlidersHorizontal className="w-3.5 h-3.5" />
-                    Hapus Filter ({[filters.category, filters.status, filters.query].filter(Boolean).length})
+                    Hapus Filter
                   </button>
                 )}
               </div>
@@ -451,7 +451,7 @@ export default function GalleryDashboard() {
                     id="filter-category-select"
                     value={filters.category}
                     onChange={(e) => handleFilterChange({ category: e.target.value })}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded text-xs font-semibold text-slate-700 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/5 cursor-pointer"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 focus:border-brand-500 dark:focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:focus:ring-brand-500/20 outline-none rounded-lg text-xs transition-all dark:text-white"
                   >
                     <option value="">Semua Kategori</option>
                     <option value="tournament">Turnamen</option>
@@ -468,7 +468,7 @@ export default function GalleryDashboard() {
                     id="filter-access-select"
                     value={filters.status}
                     onChange={(e) => handleFilterChange({ status: e.target.value })}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded text-xs font-semibold text-slate-700 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/5 cursor-pointer"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 focus:border-brand-500 dark:focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:focus:ring-brand-500/20 outline-none rounded-lg text-xs transition-all dark:text-white"
                   >
                     <option value="">Semua Akses</option>
                     <option value="public">Publik Only</option>
@@ -483,7 +483,7 @@ export default function GalleryDashboard() {
                     id="sort-by-select"
                     value={filters.sortBy}
                     onChange={(e) => handleFilterChange({ sortBy: e.target.value })}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded text-xs font-semibold text-slate-700 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/5 cursor-pointer"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 focus:border-brand-500 dark:focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:focus:ring-brand-500/20 outline-none rounded-lg text-xs transition-all dark:text-white"
                   >
                     <option value="date_desc">Tanggal Ditambahkan (Terbaru)</option>
                     <option value="date_asc">Tanggal Ditambahkan (Terlama)</option>
@@ -499,7 +499,7 @@ export default function GalleryDashboard() {
                       setSelectedItemForEdit(undefined);
                       setIsFormOpen(true);
                     }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all duration-150 cursor-pointer w-full sm:w-auto"
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all duration-150 cursor-pointer w-full sm:w-auto"
                   >
                     <Plus className="w-4 h-4" />
                     Tambah Foto
@@ -512,20 +512,12 @@ export default function GalleryDashboard() {
             <div className="flex-1 w-full bg-slate-50 dark:bg-gray-900 p-6">
               
               {processedItems.length === 0 ? (
-                <div className="text-center py-16 bg-white dark:bg-gray-800 border border-dashed border-slate-300 dark:border-gray-700 rounded p-8">
+                <div className="text-center py-16 bg-white dark:bg-gray-900 border border-dashed border-slate-300 dark:border-gray-700 rounded p-8">
                   <ImageIcon className="w-10 h-10 text-slate-300 mx-auto mb-3 pointer-events-none" />
                   <h3 className="text-sm font-bold text-slate-700">Foto Tidak Ditemukan</h3>
                   <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1 leading-normal">
                     Tidak ada karya foto yang cocok dengan kriteria pencarian atau filter Anda saat ini.
                   </p>
-                  {(filters.category || filters.status || filters.query) && (
-                    <button
-                      onClick={handleClearFilters}
-                      className="mt-4 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold uppercase tracking-wider rounded transition cursor-pointer"
-                    >
-                      Reset Filter Pencarian
-                    </button>
-                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import InputField from "@/components/form/input/InputField";
 import DatePicker from "@/components/form/DatePicker";
-import { Loader2, Camera, CheckCircle2, AlertCircle, UserCheck, ArrowLeft, Save } from "lucide-react";
+import { Loader2, Camera, CheckCircle2, AlertCircle, UserCheck, ArrowLeft, Save, User as UserIcon, Mail, Activity, Shield } from "lucide-react";
 import Link from "next/link";
 import Loader from "@/components/shared/Loader";
 import ComponentCard from "@/components/common/ComponentCard";
@@ -31,7 +31,7 @@ interface Profile {
 type NotifType = "success" | "error" | null;
 interface Notif { type: NotifType; message: string; }
 
-export default function EditProfileForm({ userId }: { userId: string }) {
+export default function EditProfileForm({ userId, returnUrl }: { userId: string; returnUrl?: string }) {
   const router = useRouter();
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,7 +57,7 @@ export default function EditProfileForm({ userId }: { userId: string }) {
         break;
       case "height":
         const h = parseInt(value);
-        if (value && (isNaN(h) || h < 50 || h > 300)) error = "Tinggi harus antara 50-300 cm";
+        if (value && (isNaN(h) || h < 50 || h > 250)) error = "Tinggi harus antara 50-250 cm";
         break;
       case "address":
         if (value && value.length > 200) error = "Alamat maksimal 200 karakter";
@@ -87,9 +87,7 @@ export default function EditProfileForm({ userId }: { userId: string }) {
 
       const { data, error } = await supabase
         .from("profile")
-        .select(`
-          id, fullname, address, gender, birth_date, avatar_url, username, height, hand_dominance, is_active, user_id
-        `)
+        .select("*")
         .eq("user_id", userId)
         .single();
 
@@ -114,6 +112,8 @@ export default function EditProfileForm({ userId }: { userId: string }) {
         };
         setProfile(mappedProfile);
         setForm(mappedProfile);
+      } else if (error) {
+        console.error("Error fetching profile:", error);
       }
       setLoading(false);
     }
@@ -197,7 +197,7 @@ export default function EditProfileForm({ userId }: { userId: string }) {
     } else {
       showNotif("success", "Profil berhasil disimpan!");
       setTimeout(() => {
-        router.push(`/admin/profile/${userId}`);
+        router.push(returnUrl || `/admin/profile/${userId}`);
       }, 1000);
     }
   }
@@ -291,6 +291,7 @@ export default function EditProfileForm({ userId }: { userId: string }) {
                     placeholder="Nama lengkap Anda"
                     error={!!errors.fullname}
                     hint={errors.fullname}
+                    icon={<UserIcon className="w-4 h-4" />}
                     required
                   />
                 </div>
@@ -305,32 +306,43 @@ export default function EditProfileForm({ userId }: { userId: string }) {
                     placeholder="Masukan username"
                     error={!!errors.username}
                     hint={errors.username}
+                    icon={<span className="text-xs font-mono font-bold">@</span>}
                   />
                 </div>
 
                 <div>
                   <Label htmlFor="email">Email</Label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={form.email || ""}
-                    disabled
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm cursor-not-allowed opacity-70"
-                  />
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <input
+                      id="email"
+                      type="email"
+                      value={form.email || ""}
+                      disabled
+                      className="w-full pl-9 px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm cursor-not-allowed opacity-70"
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <Label htmlFor="gender">Jenis Kelamin</Label>
-                  <select
-                    id="gender"
-                    value={form.gender || ""}
-                    onChange={(e) => handleChange("gender", e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-shadow"
-                  >
-                    <option value="">Pilih</option>
-                    <option value="male">Laki-laki</option>
-                    <option value="female">Perempuan</option>
-                  </select>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                      <UserCheck className="w-4 h-4" />
+                    </div>
+                    <select
+                      id="gender"
+                      value={form.gender || ""}
+                      onChange={(e) => handleChange("gender", e.target.value)}
+                      className="w-full pl-9 px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 dark:focus:border-brand-500 transition-shadow"
+                    >
+                      <option value="">Pilih</option>
+                      <option value="male">Laki-laki</option>
+                      <option value="female">Perempuan</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div>
@@ -354,35 +366,45 @@ export default function EditProfileForm({ userId }: { userId: string }) {
                     placeholder="Masukan tinggi badan"
                     error={!!errors.height}
                     hint={errors.height}
+                    icon={<span className="text-xs font-bold">cm</span>}
                   />
                 </div>
 
                 <div>
                   <Label htmlFor="hand_dominance">Penggunaan Tangan</Label>
-                  <select
-                    id="hand_dominance"
-                    value={form.hand_dominance || ""}
-                    onChange={(e) => handleChange("hand_dominance", e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-shadow"
-                  >
-                    <option value="">Pilih</option>
-                    <option value="right">Kanan</option>
-                    <option value="left">Kiri</option>
-                    <option value="both">Keduanya</option>
-                  </select>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                    </div>
+                    <select
+                      id="hand_dominance"
+                      value={form.hand_dominance || ""}
+                      onChange={(e) => handleChange("hand_dominance", e.target.value)}
+                      className="w-full pl-9 px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 dark:focus:border-brand-500 transition-shadow"
+                    >
+                      <option value="">Pilih</option>
+                      <option value="right">Kanan</option>
+                      <option value="left">Kiri</option>
+                      <option value="both">Keduanya</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div>
                   <Label htmlFor="is_active">Status Aktif</Label>
-                  <select
-                    id="is_active"
-                    value={form.is_active ? "true" : "false"}
-                    onChange={(e) => handleChange("is_active", e.target.value === "true")}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-shadow"
-                  >
-                    <option value="true">Aktif</option>
-                    <option value="false">Nonaktif</option>
-                  </select>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                      <Shield className="w-4 h-4" />
+                    </div>
+                    <select
+                      id="is_active"
+                      value={form.is_active ? "true" : "false"}
+                      onChange={(e) => handleChange("is_active", e.target.value === "true")}
+                      className="w-full pl-9 px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 dark:focus:border-brand-500 transition-shadow"
+                    >
+                      <option value="true">Aktif</option>
+                      <option value="false">Nonaktif</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="col-span-1 md:col-span-2">
@@ -393,7 +415,7 @@ export default function EditProfileForm({ userId }: { userId: string }) {
                     value={form.address || ""}
                     onChange={(e) => handleChange("address", e.target.value)}
                     placeholder="Masukan alamat lengkap Anda"
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 resize-none transition-shadow ${errors.address ? "border-red-500" : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"}`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 dark:focus:border-brand-500 resize-none transition-shadow ${errors.address ? "border-red-500" : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"}`}
                   />
                   {errors.address && <p className="mt-1 text-xs text-red-500">{errors.address}</p>}
                 </div>
@@ -401,7 +423,7 @@ export default function EditProfileForm({ userId }: { userId: string }) {
 
               <div className="flex justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <Link
-                  href={`/admin/profile/${userId}`}
+                  href={returnUrl || `/admin/profile/${userId}`}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4" />

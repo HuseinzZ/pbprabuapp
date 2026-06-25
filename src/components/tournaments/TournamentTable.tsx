@@ -384,8 +384,8 @@ export default function TournamentTable({
       {!loading && totalItems > 0 && (
         <div className="px-5 py-4 border-t border-gray-100 dark:border-white/[0.05] flex flex-col sm:flex-row items-center sm:justify-between gap-4">
           <div className="text-xs text-gray-500 dark:text-gray-400 text-center sm:text-left">
-            Menampilkan {(currentPage - 1) * pageSize + 1}–
-            {Math.min(currentPage * pageSize, totalItems)} dari {totalItems} turnamen
+            Menampilkan <strong className="text-slate-900 dark:text-white">{(currentPage - 1) * pageSize + 1}</strong> -{" "}
+            <strong className="text-slate-900 dark:text-white">{Math.min(currentPage * pageSize, totalItems)} </strong> dari <strong className="text-slate-900 dark:text-white">{totalItems}</strong> turnamen
             {filter !== "all" && (
               <span> · Filter: {STATUS_CONFIG[filter as Exclude<FilterStatus, "all">]?.label}</span>
             )}

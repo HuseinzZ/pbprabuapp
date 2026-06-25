@@ -28,6 +28,15 @@ const nextConfig: NextConfig = {
     });
     return config;
   },
+  async redirects() {
+    return [
+      {
+        source: '/profile',
+        destination: '/user/profile',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

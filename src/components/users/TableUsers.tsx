@@ -310,8 +310,8 @@ export default function TableUsers({
       {/* Pagination Controls */}
       {totalPages > 0 && (
         <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50 dark:bg-gray-800/50">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 dark:text-gray-400">
-            Menampilkan <strong className="text-slate-900 dark:text-white">{Math.min((currentPage - 1) * pageSize + 1, totalUsers)}</strong> sampai{" "}
+          <span className="text-xs text-gray-500 dark:text-gray-400 text-center sm:text-left">
+            Menampilkan <strong className="text-slate-900 dark:text-white">{Math.min((currentPage - 1) * pageSize + 1, totalUsers)}</strong> -{" "}
             <strong className="text-slate-900 dark:text-white">{Math.min(currentPage * pageSize, totalUsers)}</strong> dari{" "}
             <strong className="text-slate-900 dark:text-white">{totalUsers}</strong> pengguna
           </span>

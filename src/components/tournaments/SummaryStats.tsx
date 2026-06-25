@@ -25,7 +25,7 @@ export default function SummaryStats({ tournaments }: SummaryStatsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* KPI 1 */}
-      <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
+      <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
         <div className="space-y-1">
           <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider leading-none">
             TOTAL TURNAMEN
@@ -43,7 +43,7 @@ export default function SummaryStats({ tournaments }: SummaryStatsProps) {
       </div>
 
       {/* KPI 2 */}
-      <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
+      <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
         <div className="space-y-1">
           <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider leading-none">
             DISTRIBUSI PRIZE POOL
@@ -61,7 +61,7 @@ export default function SummaryStats({ tournaments }: SummaryStatsProps) {
       </div>
 
       {/* KPI 3 */}
-      <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
+      <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
         <div className="space-y-1">
           <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider leading-none">
             TURNAMEN SELESAI
@@ -79,7 +79,7 @@ export default function SummaryStats({ tournaments }: SummaryStatsProps) {
       </div>
 
       {/* KPI 4 */}
-      <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
+      <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
         <div className="space-y-1">
           <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider leading-none">
             TURNAMEN MENDATANG

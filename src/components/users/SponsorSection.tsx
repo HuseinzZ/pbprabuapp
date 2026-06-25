@@ -2,7 +2,7 @@ import React from "react";
 
 export default function SponsorSection() {
     return (
-        <section className="flex flex-col items-center justify-center px-4 md:px-0 w-full py-16 bg-transparent">
+        <section className="flex flex-col items-center justify-center px-4 md:px-0 w-full py-16 bg-white dark:bg-gray-900">
             <h3 className="text-lg font-medium text-slate-600 dark:text-gray-400 text-center">
                 Didukung oleh mitra terpercaya kami
             </h3>

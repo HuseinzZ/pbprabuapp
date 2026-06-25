@@ -52,7 +52,7 @@ type NotifType = "success" | "error";
 interface Notif { type: NotifType; message: string; }
 
 const FIELD_CLASS =
-  "w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-shadow disabled:opacity-50";
+  "w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500 transition-all disabled:opacity-50";
 
 export default function PointForm({ initialData, mode }: PointFormProps) {
   const router = useRouter();
@@ -212,7 +212,7 @@ export default function PointForm({ initialData, mode }: PointFormProps) {
                 type="text"
                 value={form.name}
                 onChange={(e) => setField("name", e.target.value)}
-                placeholder="Contoh: Super 1000"
+                placeholder="Super 1000"
                 disabled={isProcessing}
                 className={FIELD_CLASS}
               />

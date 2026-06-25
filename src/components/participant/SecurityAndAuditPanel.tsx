@@ -55,9 +55,6 @@ export default function SecurityAndAuditPanel({ logs }: Props) {
             <li>
               <strong className="text-emerald-700 dark:text-emerald-500">Strict Date Sequence Checklist:</strong> Tanggal rilis turnamen diverifikasi secara algoritmik. Mengurangi resiko kelalaian logis seperti tanggal akhir turnamen yang mendahului tanggal mulai turnamen.
             </li>
-            <li>
-              <strong className="text-emerald-700 dark:text-emerald-500">Validation Seed Limitation:</strong> Nilai unggulan (seed) dibatasi ketat berkisar dinosaurus seed (1 s/d 64) guna menjaga kejujuran struktur turnamen resmi.
-            </li>
           </ul>
         </div>
       </div>

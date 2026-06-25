@@ -1,7 +1,6 @@
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import UserInfoCard from "@/components/user-profile/UserInfoCard";
 import { Metadata } from "next";
-import React from "react";
 
 export const metadata: Metadata = {
     title: "Profile | PB Prabu Bandung",

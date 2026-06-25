@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { User } from "@/app/admin/users/types";
 import { AlertTriangle, Trash2, X } from "lucide-react";
 
@@ -13,8 +14,13 @@ interface DeleteModalProps {
 }
 
 export default function DeleteUserModal({ isOpen, player, onClose, onConfirm, isDeleting }: DeleteModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [typedConfirmation, setTypedConfirmation] = useState("");
   const [errorText, setErrorText] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -24,7 +30,7 @@ export default function DeleteUserModal({ isOpen, player, onClose, onConfirm, is
     }
   }, [isOpen]);
 
-  if (!isOpen || !player) return null;
+  if (!isOpen || !player || !mounted) return null;
 
   const handleConfirm = () => {
     // Basic verification check using fullname or username
@@ -44,8 +50,8 @@ export default function DeleteUserModal({ isOpen, player, onClose, onConfirm, is
 
   const confirmText = player.username || player.fullname;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-200">
       <div 
         className="bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-slate-200 dark:border-gray-800 max-w-md w-full overflow-hidden transform transition-all duration-200 scale-100 p-6 space-y-6"
       >
@@ -130,6 +136,7 @@ export default function DeleteUserModal({ isOpen, player, onClose, onConfirm, is
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

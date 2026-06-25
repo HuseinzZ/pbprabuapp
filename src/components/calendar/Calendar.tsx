@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useRef, useEffect, useCallback, Suspense, useMemo } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -16,8 +16,9 @@ import { Modal } from "@/components/ui/modal/modal";
 import { createClient } from "@/lib/supabase/client";
 import Loader from "@/components/shared/Loader";
 import DatePicker from "@/components/form/DatePicker";
-import { useRouter, useSearchParams, usePathname, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowLeft, Save } from "lucide-react";
+import { toast } from "react-toastify";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,21 +65,8 @@ const dbToCalendar = (e: DbEvent): CalendarEvent => ({
 const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => {
   const supabase = createClient();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const params = useParams();
 
-  // Determine mode and eventId from URL directly
-  const mode = pathname.includes("/add")
-    ? "add"
-    : pathname.includes("/edit/")
-      ? "edit"
-      : pathname.includes("/delete/")
-        ? "delete"
-        : undefined;
-
-  const eventId = params.id as string | undefined;
-
+  const [modalMode, setModalMode] = useState<"add" | "edit" | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [eventTitle, setEventTitle] = useState("");
   const [eventStartDate, setEventStartDate] = useState("");
@@ -89,6 +77,7 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
   // ─── Loading states ───────────────────────────────────────────────────────
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const calendarRef = useRef<FullCalendar>(null);
 
@@ -97,58 +86,44 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
     setEvents(initialEvents.map(dbToCalendar));
   }, [initialEvents]);
 
-  // Handle modal state and load data based on router mode & eventId
-  useEffect(() => {
-    if (mode === "add") {
-      const start = searchParams.get("start") || "";
-      const end = searchParams.get("end") || "";
-      setEventTitle("");
-      
-      const startDate = start.includes("T") ? start.split("T")[0] : start.split(" ")[0];
-      const endDate = end.includes("T") ? end.split("T")[0] : end.split(" ")[0];
+  const handleDateSelect = useCallback((selectInfo: DateSelectArg) => {
+    const start = selectInfo.startStr;
+    const end = selectInfo.endStr || selectInfo.startStr;
+    setEventTitle("");
+    
+    const startDate = start.includes("T") ? start.split("T")[0] : start.split(" ")[0];
+    const endDate = end.includes("T") ? end.split("T")[0] : end.split(" ")[0];
+
+    setEventStartDate(startDate);
+    setEventEndDate(endDate || startDate);
+    setEventLevel("Primary");
+    setSelectedEvent(null);
+    setModalMode("add");
+  }, []);
+
+  const handleEventClick = useCallback((clickInfo: EventClickArg) => {
+    const eventId = clickInfo.event.id;
+    const event = events.find((e) => e.id === eventId);
+    if (event) {
+      setSelectedEvent(event);
+      setEventTitle(event.title || "");
+
+      const startStr = event.start?.toString() || "";
+      const endStr = event.end?.toString() || "";
+
+      const startDate = startStr.includes("T") ? startStr.split("T")[0] : startStr.split(" ")[0];
+      const endDate = endStr.includes("T") ? endStr.split("T")[0] : endStr.split(" ")[0];
 
       setEventStartDate(startDate);
-      setEventEndDate(endDate || startDate);
-      setEventLevel("Primary");
-      setSelectedEvent(null);
-    } else if ((mode === "edit" || mode === "delete") && eventId && events.length > 0) {
-      const event = events.find((e) => e.id === eventId);
-      if (event) {
-        setSelectedEvent(event);
-        setEventTitle(event.title || "");
-
-        const startStr = event.start?.toString() || "";
-        const endStr = event.end?.toString() || "";
-
-        const startDate = startStr.includes("T") ? startStr.split("T")[0] : startStr.split(" ")[0];
-        const endDate = endStr.includes("T") ? endStr.split("T")[0] : endStr.split(" ")[0];
-
-        setEventStartDate(startDate);
-        setEventEndDate(endDate);
-        setEventLevel(event.extendedProps.calendar ?? "Primary");
-      }
-    } else if (!mode) {
-      setSelectedEvent(null);
-      setEventTitle("");
-      setEventStartDate("");
-      setEventEndDate("");
-      setEventLevel("Primary");
+      setEventEndDate(endDate);
+      setEventLevel(event.extendedProps.calendar ?? "Primary");
+      setModalMode("edit");
     }
-  }, [mode, eventId, events, searchParams]);
-
-  const handleDateSelect = (selectInfo: DateSelectArg) => {
-    router.push(
-      `/admin/calendar/add?start=${selectInfo.startStr}&end=${selectInfo.endStr || selectInfo.startStr}`
-    );
-  };
-
-  const handleEventClick = (clickInfo: EventClickArg) => {
-    router.push(`/admin/calendar/edit/${clickInfo.event.id}`);
-  };
+  }, [events]);
 
   const handleCloseModal = () => {
     if (isSaving || isDeleting) return;
-    router.push("/admin/calendar");
+    setModalMode(null);
   };
 
   // ─── SIMPAN (Tambah / Edit) ───────────────────────────────────────────────
@@ -171,7 +146,10 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
           })
           .eq("id", dbId);
 
-        if (!error) {
+        if (error) {
+          console.error("Update event error:", error);
+          toast.error(`Gagal menyimpan event: ${error.message}`);
+        } else {
           setEvents((prev) =>
             prev.map((e) =>
               e.id === selectedEvent.id
@@ -186,11 +164,18 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
                 : e
             )
           );
-          router.push("/admin/calendar");
+          toast.success("Event berhasil diperbarui!");
+          setModalMode(null);
           router.refresh();
         }
       } else {
         // ── Tambah ──
+        const { data: authData } = await supabase.auth.getUser();
+        if (!authData.user) {
+          toast.error("Gagal menyimpan: Sesi telah berakhir.");
+          return;
+        }
+
         const { data, error } = await supabase
           .from("events")
           .insert({
@@ -202,7 +187,10 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
           .select()
           .single();
 
-        if (!error && data) {
+        if (error) {
+          console.error("Insert event error:", error);
+          toast.error(`Gagal menyimpan event: ${error.message}`);
+        } else if (data) {
           const newEvent: CalendarEvent = {
             id: data.id,
             title: eventTitle,
@@ -212,7 +200,8 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
             extendedProps: { calendar: eventLevel, dbId: data.id },
           };
           setEvents((prev) => [...prev, newEvent]);
-          router.push("/admin/calendar");
+          toast.success("Event berhasil disimpan!");
+          setModalMode(null);
           router.refresh();
         }
       }
@@ -230,11 +219,16 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
       const { error } = await supabase.from("events").delete().eq("id", dbId);
       if (!error) {
         setEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
-        router.push("/admin/calendar");
+        setShowDeleteModal(false);
+        setModalMode(null);
+        toast.success("Event berhasil dihapus!");
         router.refresh();
+      } else {
+        toast.error(`Gagal menghapus event: ${error.message}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting event:", error);
+      toast.error(`Terjadi kesalahan: ${error.message || "Gagal menghapus"}`);
     } finally {
       setIsDeleting(false);
     }
@@ -251,35 +245,44 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
             <Loader />
           </div>
         )}
-        <div className="custom-calendar">
-          <FullCalendar
-            ref={calendarRef}
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
-            locale={idLocale}
-            firstDay={1}
-            headerToolbar={{
-              left: "prev,next addEventButton",
-              center: "title",
-              right: "dayGridMonth,timeGridWeek,timeGridDay",
-            }}
-            events={events}
-            selectable={true}
-            select={handleDateSelect}
-            eventClick={handleEventClick}
-            eventContent={renderEventContent}
-            customButtons={{
-              addEventButton: {
-                text: "Tambah Event +",
-                click: () => router.push("/admin/calendar/add"),
-              },
-            }}
-          />
-        </div>
+        {useMemo(() => (
+          <div className="custom-calendar">
+            <FullCalendar
+              ref={calendarRef}
+              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+              initialView="dayGridMonth"
+              locale={idLocale}
+              firstDay={1}
+              headerToolbar={{
+                left: "prev,next addEventButton",
+                center: "title",
+                right: "dayGridMonth,timeGridWeek,timeGridDay",
+              }}
+              events={events}
+              selectable={true}
+              select={handleDateSelect}
+              eventClick={handleEventClick}
+              eventContent={renderEventContent}
+              customButtons={{
+                addEventButton: {
+                  text: "Tambah Event +",
+                  click: () => {
+                    setEventTitle("");
+                    setEventStartDate("");
+                    setEventEndDate("");
+                    setEventLevel("Primary");
+                    setSelectedEvent(null);
+                    setModalMode("add");
+                  },
+                },
+              }}
+            />
+          </div>
+        ), [events, handleDateSelect, handleEventClick])}
 
         {/* ─── Modal Tambah / Edit ──────────────────────────────────────────── */}
         <Modal
-          isOpen={mode === "add" || mode === "edit"}
+          isOpen={modalMode === "add" || modalMode === "edit"}
           onClose={handleCloseModal}
           className="max-w-[700px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-6 lg:p-10"
         >
@@ -309,7 +312,7 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
                   onChange={(e) => setEventTitle(e.target.value)}
                   placeholder="Judul event..."
                   disabled={isLoading}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-shadow disabled:opacity-50"
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500 transition-all disabled:opacity-50"
                 />
               </div>
 
@@ -390,7 +393,7 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
                 </button>
                 {selectedEvent && (
                   <button
-                    onClick={() => router.push(`/admin/calendar/delete/${selectedEvent.extendedProps?.dbId || selectedEvent.id}`)}
+                    onClick={() => setShowDeleteModal(true)}
                     disabled={isLoading}
                     type="button"
                     className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-sm sm:w-auto w-full"
@@ -414,8 +417,8 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
 
         {/* ─── Modal Hapus Konfirmasi ────────────────────────────────────────── */}
         <Modal
-          isOpen={mode === "delete"}
-          onClose={handleCloseModal}
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
           className="max-w-sm w-full bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-6 mx-4"
         >
           <div className="flex items-center gap-3 mb-4">
@@ -440,7 +443,7 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
           </p>
           <div className="flex gap-3">
             <button
-              onClick={handleCloseModal}
+              onClick={() => setShowDeleteModal(false)}
               disabled={isDeleting}
               className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >

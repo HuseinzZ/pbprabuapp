@@ -144,6 +144,29 @@ export default function UserDropdown() {
                   fill=""
                 />
               </svg>
+              Profile
+            </DropdownItem>
+          </li>
+          <li>
+            <DropdownItem
+              onItemClick={closeDropdown}
+              tag="a"
+              href={user?.id ? (user.role === 'admin' ? `/admin/profile/edit/${user.id}` : `/user/profile/edit`) : "#"}
+              className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+            >
+              <svg
+                className="fill-gray-500 group-hover:fill-gray-700 dark:fill-gray-400 dark:group-hover:fill-gray-300"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M16.4745 5.40801L18.5915 7.52501L16.4745 9.64201L14.3575 7.52501L16.4745 5.40801ZM13.2965 8.58601L15.4135 10.703L7.70648 18.41H5.58948V16.293L13.2965 8.58601ZM16.4745 2.57901C15.9625 2.57901 15.4515 2.77401 15.0605 3.16501L3.58948 14.636V20.41H9.36348L20.8345 8.93901C21.6155 8.15801 21.6155 6.89201 20.8345 6.11101L17.8885 3.16501C17.4975 2.77401 16.9865 2.57901 16.4745 2.57901Z"
+                  fill=""
+                />
+              </svg>
               Edit profile
             </DropdownItem>
           </li>
@@ -151,7 +174,7 @@ export default function UserDropdown() {
             <DropdownItem
               onItemClick={closeDropdown}
               tag="a"
-              href={user?.id ? (user.role === 'admin' ? `/admin/reset-password/${user.id}` : `/user/profile`) : "#"}
+              href={user?.id ? (user.role === 'admin' ? `/admin/reset-password/${user.id}` : `/user/reset-password`) : "#"}
               className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
             >
               <svg

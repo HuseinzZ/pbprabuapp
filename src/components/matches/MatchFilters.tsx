@@ -1,4 +1,5 @@
 import React from "react";
+import { toast } from "react-toastify";
 import { Search, SlidersHorizontal, X, Plus } from "lucide-react";
 import DatePicker from "@/components/form/DatePicker";
 
@@ -44,6 +45,7 @@ export default function MatchFilters({
     setSearch("");
     setTournamentDate("");
     setTournamentId("");
+    toast.info("Seluruh filter berhasil dihapus!");
   };
 
   const inputClass = "w-full px-3 py-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 outline-none cursor-pointer transition-all";

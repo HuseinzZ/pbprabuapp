@@ -1,8 +1,8 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Manajemen Pemain | PB Prabu Bandung",
-  description: "Halaman manajemen pemain PB Prabu Bandung.",
+  title: "Manajemen User | PB Prabu Bandung",
+  description: "Halaman manajemen user PB Prabu Bandung.",
 };
 
 export default function PlayersLayout({

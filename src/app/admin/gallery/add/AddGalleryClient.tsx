@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import GalleryForm from "@/components/gallery/GalleryForm";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";

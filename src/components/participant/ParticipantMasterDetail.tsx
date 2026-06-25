@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Trophy, Users, Search, Plus, Trash2, Pencil, 
   FileSpreadsheet, AlertTriangle, Clock, Mail, 
-  SlidersHorizontal, RefreshCw, CheckCircle2, Download
+  SlidersHorizontal, RefreshCw, CheckCircle2, Download, Ban
 } from 'lucide-react';
 import { Participant } from '@/app/admin/participant/types';
 import { Tournament, TournamentStatus, STATUS_CONFIG as TRN_STATUS_CONFIG } from '@/app/admin/tournaments/types';
@@ -149,6 +149,16 @@ export default function ParticipantMasterDetail({ tournaments, participants, fet
     fetchParticipants();
   };
 
+  // Disqualify participant
+  const handleDisqualifyParticipant = async (id: string, name: string) => {
+    if (!window.confirm(`Yakin ingin mendiskualifikasi peserta ${name}?`)) return;
+    
+    await supabase.from("tournament_participants").update({ status: 'disqualified' }).eq("id", id);
+    onAddLog(`Sistem mendiskualifikasi peserta ${name}`, 'update');
+    toast.success("Berhasil mendiskualifikasi peserta!");
+    fetchParticipants();
+  };
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
       
@@ -159,7 +169,7 @@ export default function ParticipantMasterDetail({ tournaments, participants, fet
         <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl p-4 space-y-3.5 shadow-sm">
           <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-gray-800">
             <SlidersHorizontal className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <h4 className="text-xs font-bold text-slate-700 dark:text-gray-300 uppercase tracking-widest">Sirkuit Penyaringan</h4>
+            <h4 className="text-xs font-bold text-slate-700 dark:text-gray-300 uppercase tracking-widest">Filter</h4>
           </div>
 
           {/* Text Search input */}
@@ -169,13 +179,13 @@ export default function ParticipantMasterDetail({ tournaments, participants, fet
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
               <input
                 type="text"
-                placeholder="Contoh: Bulutangkis, MLBB..."
+                placeholder="Cari turnamen..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   setTrnPage(1);
                 }}
-                className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded pl-8 pr-3 py-1.5 text-xs outline-none focus:bg-white dark:focus:bg-gray-900 focus:border-teal-600 transition-colors text-slate-800 dark:text-white"
+                className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded pl-8 pr-3 py-1.5 text-xs outline-none hover:bg-white dark:hover:bg-gray-900 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500 transition-colors text-slate-800 dark:text-white"
               />
             </div>
           </div>
@@ -190,7 +200,7 @@ export default function ParticipantMasterDetail({ tournaments, participants, fet
                   setStatusFilter(e.target.value);
                   setTrnPage(1);
                 }}
-                className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded p-1.5 text-[11px] outline-none font-medium cursor-pointer text-slate-700 dark:text-gray-300 transition-colors"
+                className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded p-1.5 text-[11px] outline-none hover:bg-white dark:hover:bg-gray-900 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500 font-medium cursor-pointer text-slate-700 dark:text-gray-300 transition-colors"
               >
                 <option value="ALL">Semua Status</option>
                 <option value="upcoming">Akan Datang</option>
@@ -207,7 +217,7 @@ export default function ParticipantMasterDetail({ tournaments, participants, fet
                   setSortBy(e.target.value as any);
                   setTrnPage(1);
                 }}
-                className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded p-1.5 text-[11px] outline-none font-medium cursor-pointer text-slate-700 dark:text-gray-300 transition-colors"
+                className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded p-1.5 text-[11px] outline-none hover:bg-white dark:hover:bg-gray-900 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500 font-medium cursor-pointer text-slate-700 dark:text-gray-300 transition-colors"
               >
                 <option value="date_desc">Entri Terbaru</option>
                 <option value="prize_desc">Hadiah Poin Terbanyak</option>
@@ -354,7 +364,7 @@ export default function ParticipantMasterDetail({ tournaments, participants, fet
                   <span className="text-xs font-bold text-slate-700 dark:text-gray-300 capitalize">{activeSelectedTournament.match_format} - {activeSelectedTournament.gender_category}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider block">JADWAL PERTANDINGAN</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider block">JADWAL</span>
                   <span className="text-xs font-mono font-bold text-slate-700 dark:text-gray-300">
                     {new Date(activeSelectedTournament.start_date).toLocaleDateString('id-ID')}
                   </span>
@@ -413,10 +423,10 @@ export default function ParticipantMasterDetail({ tournaments, participants, fet
                       <tbody className="divide-y divide-slate-100 dark:divide-gray-800 font-medium text-slate-700 dark:text-gray-300">
                         {paginatedParticipants.map((p) => {
                           const statusColors = {
-                            pending: 'bg-amber-100 text-amber-700 border border-amber-300',
-                            confirmed: 'bg-emerald-100 text-emerald-700 border border-emerald-300',
-                            withdrawn: 'bg-slate-100 text-slate-600 border border-slate-300',
-                            disqualified: 'bg-red-100 text-red-700 border border-red-300'
+                            pending: 'bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30',
+                            confirmed: 'bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/30',
+                            withdrawn: 'bg-slate-100 text-slate-600 border border-slate-300 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/30',
+                            disqualified: 'bg-red-100 text-red-700 border border-red-300 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30'
                           };
                           const sc = statusColors[p.status || 'pending'] || statusColors.pending;
 
@@ -463,6 +473,15 @@ export default function ParticipantMasterDetail({ tournaments, participants, fet
                                           title="Konfirmasi Peserta"
                                         >
                                           <CheckCircle2 className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                      {p.status !== 'disqualified' && p.status !== 'withdrawn' && (
+                                        <button
+                                          onClick={() => handleDisqualifyParticipant(p.id, p.profile?.fullname || 'Unknown')}
+                                          className="p-1 border border-rose-200 dark:border-rose-800/30 rounded hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-600 dark:text-rose-400 transition-colors"
+                                          title="Diskualifikasi Peserta"
+                                        >
+                                          <Ban className="w-3 h-3" />
                                         </button>
                                       )}
                                       <button

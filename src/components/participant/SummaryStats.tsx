@@ -17,7 +17,7 @@ export default function SummaryStats({ participants }: SummaryStatsProps) {
       {/* KPI MAIN PANEL COUNTERS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1 */}
-        <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
+        <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider leading-none">TOTAL PESERTA</p>
             <p className="text-xl font-extrabold text-slate-800 dark:text-white leading-none mt-1">{total}</p>
@@ -31,7 +31,7 @@ export default function SummaryStats({ participants }: SummaryStatsProps) {
         </div>
 
         {/* KPI 2 */}
-        <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
+        <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider leading-none">TERKONFIRMASI</p>
             <p className="text-xl font-extrabold text-slate-800 dark:text-white leading-none mt-1">{confirmed}</p>
@@ -43,7 +43,7 @@ export default function SummaryStats({ participants }: SummaryStatsProps) {
         </div>
 
         {/* KPI 3 */}
-        <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
+        <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider leading-none">MENUNGGU VERIFIKASI</p>
             <p className="text-xl font-extrabold text-slate-800 dark:text-white leading-none mt-1">{pending}</p>
@@ -55,7 +55,7 @@ export default function SummaryStats({ participants }: SummaryStatsProps) {
         </div>
 
         {/* KPI 4 */}
-        <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
+        <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider leading-none">MUNDUR / DISKUALIFIKASI</p>
             <p className="text-xl font-extrabold text-slate-800 dark:text-white leading-none mt-1">{inactive}</p>

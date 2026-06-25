@@ -1,15 +1,11 @@
 import { Metadata } from "next";
-import GallerySection from "@/components/users/GallerySection";
+import GalleryClient from "./GalleryClient";
 
 export const metadata: Metadata = {
   title: "Galeri - PB Prabu Bandung",
-  description: "Kumpulan foto kegiatan dan turnamen komunitas badminton PB Prabu Bandung.",
+  description: "Kumpulan foto dan dokumentasi kegiatan turnamen, latihan, dan momen spesial komunitas badminton PB Prabu Bandung.",
 };
 
 export default function GalleryPage() {
-  return (
-    <div className="pt-20">
-      <GallerySection />
-    </div>
-  );
+  return <GalleryClient />;
 }

@@ -2,6 +2,37 @@
 
 /* ─── Design Tokens ─────────────────────────────────────────── */
 :root {
+  /* ── DESIGN.md Nike-inspired system ── */
+  --ink: #111111;
+  --canvas: #ffffff;
+  --soft-cloud: #f5f5f5;
+  --charcoal: #39393b;
+  --ash: #4b4b4d;
+  --mute: #707072;
+  --stone: #9e9ea0;
+  --hairline: #cacacb;
+  --hairline-soft: #e5e5e5;
+  --sale: #d30005;
+  --sale-deep: #780700;
+  --success: #007d48;
+  --success-bright: #1eaa52;
+  --info: #1151ff;
+  --info-deep: #0034e3;
+  --accent-pink: #ed1aa0;
+  --accent-teal: #0a7281;
+  /* Radius */
+  --r-sm: 18px;
+  --r-md: 24px;
+  --r-lg: 30px;
+  --r-full: 9999px;
+  /* Spacing */
+  --sp-xs: 4px;
+  --sp-sm: 8px;
+  --sp-md: 12px;
+  --sp-lg: 18px;
+  --sp-xl: 24px;
+  --sp-xxl: 30px;
+  --sp-section: 48px;
   /* Backgrounds */
   --bg: #ffffff;
   --bg-card: #ffffff;
@@ -107,6 +138,137 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   letter-spacing: -0.03em;
 }
+
+/* ─── DESIGN.md Display Font (Playfair Display / Inter via next/font) ─ */
+.font-campaign {
+  font-family: var(--font-playfair), serif;
+  font-size: 96px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+@media (max-width: 1023px) { .font-campaign { font-size: 64px; } }
+@media (max-width: 599px)  { .font-campaign { font-size: 48px; } }
+
+.font-ui {
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+/* ─── DESIGN.md Buttons ──────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--ink);
+  color: #ffffff;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  padding: 16px 32px;
+  height: 48px;
+  border-radius: var(--r-full);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-primary:hover { opacity: 0.85; }
+.btn-primary:active { transform: scale(0.97); opacity: 0.7; }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--soft-cloud);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  padding: 16px 32px;
+  height: 48px;
+  border-radius: var(--r-full);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-secondary:hover { background: #e8e8e8; }
+
+.btn-outline-on-image {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 12px 24px;
+  border-radius: var(--r-lg);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-outline-on-image:hover { opacity: 0.9; }
+
+/* ─── DESIGN.md Filter Chips ─────────────────────────────────── */
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--hairline);
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.filter-chip:hover { border-color: var(--ink); }
+.filter-chip.active,
+.filter-chip-active {
+  background: var(--ink);
+  color: #ffffff;
+  border-color: var(--ink);
+}
+
+/* ─── DESIGN.md Skeleton Loader ──────────────────────────────── */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.skeleton {
+  background: var(--soft-cloud);
+  border-radius: 4px;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+.dark .skeleton { background: #374151; }
+
+/* ─── Page Transitions ───────────────────────────────────────── */
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-fade-in {
+  animation: pageFadeIn 0.35s ease forwards;
+}
+
+/* ─── Hairline Bottom on Sticky Bars ────────────────────────── */
+.hairline-bottom {
+  box-shadow: inset 0 -1px 0 var(--hairline-soft);
+}
+
 
 /* ─── Card ───────────────────────────────────────────────────── */
 .card {

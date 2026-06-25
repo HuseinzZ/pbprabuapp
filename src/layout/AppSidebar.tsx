@@ -315,10 +315,10 @@ const AppSidebar: React.FC = () => {
               />
               <div className="flex flex-col items-center">
                 <span className="font-extrabold text-xl tracking-tight text-gray-900 dark:text-white leading-none">
-                  SIMPERTA
+                  BMS
                 </span>
                 <span className="text-[9px] text-gray-500 dark:text-gray-400 font-medium mt-1.5 uppercase tracking-wider text-center">
-                  Sistem Manajemen Pertandingan
+                  Badminton Managemen Sistem
                 </span>
               </div>
             </>

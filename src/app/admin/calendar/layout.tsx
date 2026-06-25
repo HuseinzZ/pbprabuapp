@@ -4,7 +4,7 @@ import Calendar from "@/components/calendar/Calendar";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 
 export const metadata: Metadata = {
-  title: "Kalender | Admin PB Prabu",
+  title: "Kalender | PB Prabu Bandung",
   description: "Kalender jadwal dan event PB Prabu Bandung",
 };
 

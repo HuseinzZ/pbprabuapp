@@ -287,8 +287,6 @@ export default function GalleryForm({ itemToEdit, onClose, onSubmit }: GalleryFo
 
             {/* METADATA GLOBAL FOR ALL FILES */}
             <div className="bg-slate-50 dark:bg-gray-800/50 border border-slate-200 dark:border-gray-700 rounded-lg p-4 space-y-4 mt-2">
-              <h4 className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest">Metadata Utama (Berlaku untuk semua)</h4>
-              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-gray-300 uppercase mb-1">Kategori</label>

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function AddPointPage() {
   return (
     <div className="space-y-6">
-      <PageBreadcrumb pageTitle="Tambah Tipe Turnamen" paths={[{ name: "Tipe Turnamen", href: "/admin/points" }]} />
+      <PageBreadcrumb pageTitle="Tambah Pengaturan Poin" paths={[{ name: "Pengaturan", href: "/admin/points" }]} />
       <PointForm mode="add" />
     </div>
   );

@@ -55,7 +55,7 @@ export default function EditPointPage({
 
   return (
     <div className="space-y-6">
-      <PageBreadcrumb pageTitle="Edit Tipe Turnamen" paths={[{ name: "Tipe Turnamen", href: "/admin/points" }]} />
+      <PageBreadcrumb pageTitle="Edit Pengaturan Poin" paths={[{ name: "Pengaturan Poin", href: "/admin/points" }]} />
       <PointForm mode="edit" initialData={item} />
     </div>
   );

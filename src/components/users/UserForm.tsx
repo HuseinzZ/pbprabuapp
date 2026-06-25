@@ -35,9 +35,9 @@ function calcPasswordStrength(pwd: string): PasswordStrength {
   return { score, label: labels[score] };
 }
 
-const FC = "w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 border rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 outline-none transition-all border-gray-200 dark:border-gray-700";
+const FC = "w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 border rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500 outline-none transition-all border-gray-200 dark:border-gray-700";
 const FC_ERR = "w-full pl-9 pr-4 py-2.5 bg-red-50/30 dark:bg-red-900/10 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 border border-red-400 rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-red-300/40 outline-none transition-all";
-const SEL = "w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 outline-none transition-all";
+const SEL = "w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500 outline-none transition-all";
 
 export default function UserForm({ playerId }: UserFormProps) {
   const router = useRouter();
@@ -115,8 +115,47 @@ export default function UserForm({ playerId }: UserFormProps) {
     fetchUser();
   }, [playerId]);
 
+  function validateField(name: string, value: any, currentForm: any) {
+    let error = "";
+    if (name === "fullname") {
+      if (!value.trim()) error = "Nama lengkap wajib diisi.";
+      else if (value.trim().length < 3) error = "Nama minimal 3 karakter.";
+    } else if (name === "username") {
+      if (value && value.trim().length < 3) error = "Username minimal 3 karakter.";
+      else if (value && value.trim().length > 20) error = "Username maksimal 20 karakter.";
+    } else if (name === "height") {
+      if (value) {
+         const h = parseInt(value);
+         if (isNaN(h) || h < 50 || h > 250) error = "Tinggi badan tidak valid (50-250 cm).";
+      }
+    } else if (name === "email") {
+      if (!isEdit && !value.trim()) error = "Email wajib diisi.";
+      else if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = "Format email tidak valid.";
+    } else if (name === "password") {
+      const strength = calcPasswordStrength(value);
+      if (value && strength.score < 2) error = "Password terlalu lemah. Minimal tingkat \"Sedang\".";
+      
+      if (currentForm.confirmPassword && value !== currentForm.confirmPassword) {
+         setErrors(prev => ({ ...prev, confirmPassword: "Konfirmasi password tidak cocok." }));
+      } else if (currentForm.confirmPassword && value === currentForm.confirmPassword) {
+         setErrors(prev => ({ ...prev, confirmPassword: "" }));
+      }
+    } else if (name === "confirmPassword") {
+      if (currentForm.password && value !== currentForm.password) error = "Konfirmasi password tidak cocok.";
+    }
+    
+    setErrors(prev => {
+      if (!error && !prev[name]) return prev;
+      return { ...prev, [name]: error };
+    });
+  }
+
   function setField(name: string, value: any) {
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm(prev => {
+      const newForm = { ...prev, [name]: value };
+      validateField(name, value, newForm);
+      return newForm;
+    });
   }
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -144,6 +183,14 @@ export default function UserForm({ playerId }: UserFormProps) {
     const newErrors: Record<string, string> = {};
     if (!form.fullname.trim()) newErrors.fullname = "Nama lengkap wajib diisi.";
     else if (form.fullname.trim().length < 3) newErrors.fullname = "Nama minimal 3 karakter.";
+
+    if (form.username && form.username.trim().length < 3) newErrors.username = "Username minimal 3 karakter.";
+    else if (form.username && form.username.trim().length > 20) newErrors.username = "Username maksimal 20 karakter.";
+
+    if (form.height) {
+      const h = parseInt(form.height);
+      if (isNaN(h) || h < 50 || h > 250) newErrors.height = "Tinggi badan tidak valid (50-250 cm).";
+    }
 
     if (!isEdit && !form.email.trim()) newErrors.email = "Email wajib diisi.";
     else if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) newErrors.email = "Format email tidak valid.";
@@ -340,8 +387,8 @@ export default function UserForm({ playerId }: UserFormProps) {
               <input
                 id="fullname" type="text"
                 value={form.fullname}
-                onChange={(e) => { setField("fullname", e.target.value); if (errors.fullname) setErrors(p => ({ ...p, fullname: "" })); }}
-                placeholder="cth: Ridwan Husaeni"
+                onChange={(e) => { setField("fullname", e.target.value); }}
+                placeholder="Nama lengkap anda"
                 className={errors.fullname ? FC_ERR : FC}
               />
             </div>
@@ -363,11 +410,17 @@ export default function UserForm({ playerId }: UserFormProps) {
                 id="username" type="text"
                 value={form.username}
                 onChange={(e) => setField("username", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                placeholder="username_anda"
-                className={FC + " font-mono"}
+                placeholder="Username anda"
+                className={errors.username ? FC_ERR + " font-mono" : FC + " font-mono"}
               />
             </div>
-            <p className="mt-1 text-[9.5px] text-gray-400 font-mono">Karakter aman: a-z, 0-9, dan _</p>
+            {errors.username ? (
+              <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1.5 font-medium">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.username}
+              </p>
+            ) : (
+              <p className="mt-1 text-[9.5px] text-gray-400 font-mono">Karakter aman: a-z, 0-9, dan _</p>
+            )}
           </div>
 
           {/* Email */}
@@ -382,8 +435,8 @@ export default function UserForm({ playerId }: UserFormProps) {
               <input
                 id="email" type="email"
                 value={form.email}
-                onChange={(e) => { if (!isEdit) { setField("email", e.target.value); if (errors.email) setErrors(p => ({ ...p, email: "" })); } }}
-                placeholder="email@contoh.com"
+                onChange={(e) => { if (!isEdit) { setField("email", e.target.value); } }}
+                placeholder="email@domain.com"
                 disabled={isEdit}
                 className={isEdit
                   ? "w-full pl-9 pr-4 py-2.5 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed opacity-70 outline-none"
@@ -439,13 +492,13 @@ export default function UserForm({ playerId }: UserFormProps) {
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                <Activity className="w-4 h-4" />
               </div>
               <DatePicker
                 id="birth_date"
                 value={form.birth_date}
                 onChange={(date) => setField("birth_date", date)}
                 placeholder="Pilih tanggal lahir"
+                className={FC}
               />
             </div>
           </div>
@@ -460,8 +513,13 @@ export default function UserForm({ playerId }: UserFormProps) {
               <input id="height" type="number" value={form.height}
                 onChange={(e) => setField("height", e.target.value)}
                 placeholder="170"
-                className={FC} />
+                className={errors.height ? FC_ERR : FC} />
             </div>
+            {errors.height && (
+              <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1.5 font-medium">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.height}
+              </p>
+            )}
           </div>
 
           {/* Penggunaan Tangan */}
@@ -471,7 +529,6 @@ export default function UserForm({ playerId }: UserFormProps) {
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                <Activity className="w-4 h-4" />
               </div>
               <select id="hand_dominance" value={form.hand_dominance} onChange={(e) => setField("hand_dominance", e.target.value)} className={SEL}>
                 <option value="">Pilih</option>
@@ -533,7 +590,7 @@ export default function UserForm({ playerId }: UserFormProps) {
             <textarea id="address" rows={3} value={form.address}
               onChange={(e) => setField("address", e.target.value)}
               placeholder="Alamat lengkap"
-              className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 outline-none transition-all resize-none" />
+              className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500 outline-none transition-all resize-none" />
           </div>
         </div>
 
@@ -563,9 +620,9 @@ export default function UserForm({ playerId }: UserFormProps) {
                 <input id="password"
                   type={showPassword ? "text" : "password"}
                   value={form.password}
-                  onChange={(e) => { setField("password", e.target.value); if (errors.password) setErrors(p => ({ ...p, password: "" })); }}
+                  onChange={(e) => { setField("password", e.target.value); }}
                   placeholder={isEdit ? "••••••••" : "Buat password kuat"}
-                  className={`w-full px-3 py-2.5 pr-10 bg-white dark:bg-gray-900 border rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 outline-none transition-all ${errors.password ? "border-red-400 focus:ring-red-300/40" : "border-gray-200 dark:border-gray-700 focus:ring-brand-500/25 focus:border-brand-500"}`}
+                  className={`w-full px-3 py-2.5 pr-10 bg-white dark:bg-gray-900 border rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 outline-none transition-all ${errors.password ? "border-red-400 focus:ring-red-300/40" : "border-gray-200 dark:border-gray-700 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500"}`}
                 />
                 <button type="button" onClick={() => setShowPassword(v => !v)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -583,9 +640,9 @@ export default function UserForm({ playerId }: UserFormProps) {
                 <input id="confirmPassword"
                   type={showConfirm ? "text" : "password"}
                   value={form.confirmPassword}
-                  onChange={(e) => { setField("confirmPassword", e.target.value); if (errors.confirmPassword) setErrors(p => ({ ...p, confirmPassword: "" })); }}
+                  onChange={(e) => { setField("confirmPassword", e.target.value); }}
                   placeholder="Ulangi password"
-                  className={`w-full px-3 py-2.5 pr-10 bg-white dark:bg-gray-900 border rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 outline-none transition-all ${errors.confirmPassword ? "border-red-400 focus:ring-red-300/40" : "border-gray-200 dark:border-gray-700 focus:ring-brand-500/25 focus:border-brand-500"}`}
+                  className={`w-full px-3 py-2.5 pr-10 bg-white dark:bg-gray-900 border rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 outline-none transition-all ${errors.confirmPassword ? "border-red-400 focus:ring-red-300/40" : "border-gray-200 dark:border-gray-700 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500"}`}
                 />
                 <button type="button" onClick={() => setShowConfirm(v => !v)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">

@@ -185,7 +185,6 @@ function MatchGrid({ matches: initialMatches, onInputScore, onDeleteMatch }: { m
       const score1 = team === 1 ? newScore : otherScore;
       const score2 = team === 2 ? newScore : otherScore;
       updateData.winner_team_id = score1 > score2 ? targetMatch.team1_id : score2 > score1 ? targetMatch.team2_id : null;
-      updateData.ended_at = new Date().toISOString();
     }
 
     const { error } = await supabase.from('matches').update(updateData).eq('id', matchId);

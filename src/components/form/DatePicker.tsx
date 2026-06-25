@@ -11,9 +11,10 @@ interface DatePickerProps {
   placeholder?: string;
   maxDate?: string;
   className?: string;
+  icon?: React.ReactNode;
 }
 
-const INPUT_CLASS = "w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pr-10 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30";
+const INPUT_CLASS = "w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pr-10 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer dark:border-gray-700 dark:focus:border-brand-500 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30";
 
 export default function DatePicker({
   id,
@@ -22,6 +23,7 @@ export default function DatePicker({
   placeholder = "Pilih tanggal",
   maxDate,
   className,
+  icon,
 }: DatePickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const fpRef = useRef<flatpickr.Instance | null>(null);
@@ -34,7 +36,7 @@ export default function DatePicker({
       dateFormat: "Y-m-d",
       altInput: true,
       altFormat: "d F Y",
-      altInputClass: className || INPUT_CLASS,
+      altInputClass: `${className || INPUT_CLASS} ${icon ? "!pl-9" : ""}`,
       defaultDate: value || undefined,
       maxDate,
       allowInput: false,
@@ -64,6 +66,11 @@ export default function DatePicker({
 
   return (
     <div className="relative w-full">
+      {icon && (
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 z-10">
+          {icon}
+        </div>
+      )}
       {/* Input asli — flatpickr akan menyembunyikannya dan menampilkan altInput */}
       <input
         ref={inputRef}

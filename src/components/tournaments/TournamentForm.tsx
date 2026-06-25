@@ -13,7 +13,7 @@ import {
 import { Point } from "@/app/admin/points/types";
 import Loader from "@/components/shared/Loader";
 import Label from "@/components/form/Label";
-import InputField from "@/components/form/input/InputField";
+
 import DatePicker from "@/components/form/DatePicker";
 import LocationPicker from "@/components/tournaments/LocationPicker";
 import {
@@ -39,7 +39,7 @@ type NotifType = "success" | "error";
 interface Notif { type: NotifType; message: string }
 
 const FIELD_CLASS =
-  "w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-shadow";
+  "w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500 transition-all disabled:opacity-50";
 
 // ─── Section Card ─────────────────────────────────────────────────────────────
 
@@ -196,7 +196,27 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
         .eq("id", tournamentId!);
       error = res.error;
     } else {
-      const res = await supabase.from("tournaments").insert(payload);
+      const { data: { user } } = await supabase.auth.getUser();
+      let createdBy = null;
+      
+      if (user?.id) {
+        // Cek apakah profile admin ada untuk mencegah FK error
+        const { data: profile } = await supabase
+          .from("profile")
+          .select("id")
+          .eq("id", user.id)
+          .single();
+          
+        if (profile) {
+          createdBy = user.id;
+        }
+      }
+
+      const insertPayload = {
+        ...payload,
+        created_by: createdBy
+      };
+      const res = await supabase.from("tournaments").insert(insertPayload);
       error = res.error;
     }
 
@@ -205,6 +225,20 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
     if (error) {
       showNotif("error", "Gagal menyimpan: " + error.message);
       return;
+    }
+
+    try {
+      const logsStr = localStorage.getItem('manajemen_turnamen_logs');
+      const prevLogs = logsStr ? JSON.parse(logsStr) : [];
+      const newLog = {
+        id: `log-${Date.now()}`,
+        action: isEdit ? `Memperbarui turnamen "${payload.name}"` : `Menambahkan turnamen baru "${payload.name}"`,
+        timestamp: new Date().toISOString(),
+        type: isEdit ? 'update' : 'create'
+      };
+      localStorage.setItem('manajemen_turnamen_logs', JSON.stringify([...prevLogs, newLog].slice(-50)));
+    } catch (e) {
+      console.error("Gagal menyimpan log:", e);
     }
 
     showNotif(
@@ -249,16 +283,16 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
               <Label htmlFor="name">
                 Nama Turnamen <span className="text-red-500">*</span>
               </Label>
-              <InputField
+              <input
                 id="name"
                 type="text"
                 value={form.name}
                 onChange={(e) => setField("name", e.target.value)}
-                placeholder="Contoh: Open Tournament PB Prabu 2025"
-                error={!!errors.name}
-                hint={errors.name}
+                placeholder="Open Tournament PB Prabu 2025"
                 required
+                className={`${FIELD_CLASS} ${errors.name ? "border-red-400 focus:border-red-500 focus:ring-red-500/25" : ""}`}
               />
+              {errors.name && <p className="mt-1.5 text-xs text-red-500">{errors.name}</p>}
             </div>
 
             {/* Tipe Turnamen */}

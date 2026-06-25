@@ -42,7 +42,7 @@ export default async function AdminDashboard() {
   const { data: { user } } = await supabase.auth.getUser();
   let userName = "Admin";
   if (user) {
-    const { data: profile } = await supabase.from('profile').select('fullname').eq('id', user.id).single();
+    const { data: profile } = await supabase.from('profile').select('fullname').eq('user_id', user.id).single();
     if (profile?.fullname) {
       userName = profile.fullname;
     } else if (user.user_metadata?.fullname) {

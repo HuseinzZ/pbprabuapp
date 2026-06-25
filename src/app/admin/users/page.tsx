@@ -392,6 +392,10 @@ function UsersPageContent() {
             setSearch={setLocalSearch}
             pageSize={urlPageSize}
             setPageSize={(val) => updateQueryParams({ size: val.toString(), page: "1" })}
+            onClearFilters={() => {
+              updateQueryParams({ filter: null, status: null, sort: null, search: null, page: "1" });
+              toast.info("Semua filter berhasil dihapus!");
+            }}
             onSyncPoints={handleSyncPoints}
             syncing={syncing}
           />
@@ -421,7 +425,7 @@ function UsersPageContent() {
               Keamanan & Sinkronisasi
             </h4>
             <p className="text-xs text-slate-500 dark:text-gray-400 leading-relaxed">
-              Pengaturan peran (role), status akun (aktif/nonaktif), dan validasi pengguna dikontrol secara langsung oleh sistem. Jika Anda menemukan ketidaksesuaian antara jumlah poin pada profil dan poin turnamen, klik tombol <b>"Sync Poin"</b> pada panel pencarian.
+              Pengaturan peran (role), status akun (aktif/nonaktif), dan validasi pengguna dikontrol secara langsung oleh sistem. Jika menemukan ketidaksesuaian antara jumlah poin pada profil dan poin turnamen, klik tombol <b>"Sync Poin"</b> pada panel filter.
             </p>
             <div className="pt-3 border-t border-slate-100 dark:border-gray-800 text-[11px] font-semibold text-slate-400 dark:text-gray-500 space-y-2.5">
               <div className="flex items-center gap-2">

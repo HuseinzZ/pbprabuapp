@@ -1,5 +1,6 @@
 import React from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
+import { toast } from "react-toastify";
 import DatePicker from "@/components/form/DatePicker";
 
 interface StandingsFiltersProps {
@@ -34,6 +35,7 @@ export default function StandingsFilters({
     setSearch("");
     setTournamentDate("");
     setTournamentId("all");
+    toast.info("Seluruh filter berhasil dihapus!");
   };
 
   const inputClass = "w-full px-3 py-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 outline-none cursor-pointer transition-all";

@@ -111,7 +111,7 @@ function TournamentsPageContent() {
     if (!deleteTarget) return;
     setIsDeleting(true);
     await supabase.from("tournaments").delete().eq("id", deleteTarget.id);
-    addLog(`Sistem menghapus data turnamen ${deleteTarget.name}`, 'delete');
+    addLog(`Sistem menghapus turnamen "${deleteTarget.name}"`, 'delete');
     toast.success("Berhasil menghapus turnamen!");
     setIsDeleting(false);
     setDeleteTarget(null);

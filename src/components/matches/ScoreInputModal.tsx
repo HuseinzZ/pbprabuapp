@@ -98,7 +98,6 @@ export default function ScoreInputModal({ match, isOpen, onClose, onSaved }: Sco
         score_team2: s2,
         winner_team_id: winnerId,
         status: "completed",
-        ended_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq("id", match.id);

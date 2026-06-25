@@ -16,6 +16,7 @@ interface UserFiltersProps {
   setPageSize: (val: number) => void;
   onAddPlayer?: () => void;
   onSyncPoints?: () => void;
+  onClearFilters?: () => void;
   syncing?: boolean;
 }
 
@@ -32,18 +33,24 @@ export default function UserFilters({
   setPageSize,
   onAddPlayer,
   onSyncPoints,
+  onClearFilters,
   syncing,
 }: UserFiltersProps) {
   const isFiltered = filter !== "all" || statusFilter !== "all" || sortBy !== "name_asc" || search !== "";
 
   const handleClearFilters = () => {
+    if (onClearFilters) {
+      onClearFilters();
+      setSearch("");
+      return;
+    }
     setFilter("all");
     setStatusFilter("all");
     setSortBy("name_asc");
     setSearch("");
   };
 
-  const inputClass = "w-full px-3 py-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 outline-none cursor-pointer transition-all";
+  const inputClass = "w-full px-3 py-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 focus:border-brand-500 dark:focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:focus:ring-brand-500/20 outline-none rounded-lg text-xs transition-all dark:text-white";
   const labelClass = "block text-[9px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-1.5";
 
   return (
@@ -137,7 +144,7 @@ export default function UserFilters({
               onClick={onSyncPoints}
               disabled={syncing}
               title="Sinkronisasi poin dari riwayat"
-              className="px-3 py-2 border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition duration-150 cursor-pointer disabled:opacity-50"
+              className="px-3 py-2 border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-700 dark:text-gray-300 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition duration-150 cursor-pointer disabled:opacity-50"
             >
               <RefreshCcw className={`w-3.5 h-3.5 text-slate-400 dark:text-gray-500 ${syncing ? 'animate-spin text-brand-500' : ''}`} />
               <span className="hidden sm:inline">Sync</span>
