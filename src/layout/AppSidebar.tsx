@@ -47,6 +47,11 @@ const navItems: NavItem[] = [
     path: "/admin/gallery",
   },
   {
+    icon: <PageIcon />,
+    name: "Banner Beranda",
+    path: "/admin/carousel",
+  },
+  {
     icon: <BoxCubeIcon />,
     name: "Pengaturan Poin",
     path: "/admin/points",

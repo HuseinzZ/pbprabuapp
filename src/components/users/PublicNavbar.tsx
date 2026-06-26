@@ -53,8 +53,10 @@ export default function PublicNavbar() {
   // Close mobile menu on route change
   useEffect(() => {
     setMenuOpen(false);
+    setActivePath(pathname);
   }, [pathname]);
 
+  const [activePath, setActivePath] = useState(pathname);
   const isAtHome = pathname === "/";
 
   return (
@@ -89,12 +91,13 @@ export default function PublicNavbar() {
           <div className="hidden lg:flex items-center gap-0.5">
             {navLinks.map((link) => {
               const isActive =
-                pathname === link.href ||
-                (link.href !== "/" && pathname.startsWith(link.href));
+                (link.href === "/" && (activePath === "/" || activePath === "/user")) ||
+                (link.href !== "/" && (activePath.startsWith(link.href) || activePath.includes(link.href)));
               return (
                 <Link
                   key={link.href}
                   href={link.href}
+                  onClick={() => setActivePath(link.href)}
                   className={`group relative px-3.5 py-2 text-[13px] font-medium tracking-tight transition-colors duration-200 font-ui ${
                     isActive
                       ? "text-gray-900 dark:text-white"
@@ -167,40 +170,17 @@ export default function PublicNavbar() {
           </div>
         </div>
 
-        {/* Mobile drawer */}
         <div
           id="mobile-menu"
           role="dialog"
           aria-label="Mobile navigation menu"
-          className={`absolute top-16 left-0 right-0 bg-white/98 dark:bg-gray-900/98 backdrop-blur-xl border-b border-[var(--hairline-soft)] lg:hidden transition-all duration-300 overflow-hidden ${
-            menuOpen ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0 pointer-events-none"
+          className={`absolute top-16 left-0 right-0 bg-white/98 dark:bg-gray-900/98 backdrop-blur-xl border-b border-[var(--hairline-soft)] lg:hidden transition-all duration-300 ${
+            menuOpen ? "max-h-[600px] opacity-100 overflow-visible" : "max-h-0 opacity-0 pointer-events-none overflow-hidden"
           }`}
         >
           <div className="px-4 py-4 flex flex-col gap-1">
-            {navLinks.map((link) => {
-              const isActive =
-                pathname === link.href ||
-                (link.href !== "/" && pathname.startsWith(link.href));
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`block py-3.5 px-3 font-medium text-[15px] font-ui rounded-lg transition-colors ${
-                    isActive
-                      ? "text-[var(--ink)] dark:text-white bg-[var(--soft-cloud)] dark:bg-white/5"
-                      : "text-[var(--mute)] dark:text-gray-300 hover:text-[var(--ink)] dark:hover:text-white hover:bg-[var(--soft-cloud)] dark:hover:bg-white/5"
-                  }`}
-                >
-                  {link.label}
-                  {isActive && (
-                    <span className="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-[var(--ink)] dark:bg-white align-middle" />
-                  )}
-                </Link>
-              );
-            })}
-
             {/* Auth section */}
-            <div className="mt-3 pt-3 border-t border-[var(--hairline)] flex flex-col gap-2">
+            <div className="mb-3 pb-3 border-b border-[var(--hairline)] flex flex-col gap-2">
               {!loading && (
                 sessionUser ? (
                   <div className="flex items-center justify-between py-2 px-3">
@@ -225,6 +205,32 @@ export default function PublicNavbar() {
                 )
               )}
             </div>
+
+            {navLinks.map((link) => {
+              const isActive =
+                (link.href === "/" && (activePath === "/" || activePath === "/user")) ||
+                (link.href !== "/" && (activePath.startsWith(link.href) || activePath.includes(link.href)));
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => {
+                    setActivePath(link.href);
+                    setMenuOpen(false);
+                  }}
+                  className={`block py-3.5 px-3 font-medium text-[15px] font-ui rounded-lg transition-colors ${
+                    isActive
+                      ? "text-[var(--ink)] dark:text-white bg-[var(--soft-cloud)] dark:bg-white/5"
+                      : "text-[var(--mute)] dark:text-gray-300 hover:text-[var(--ink)] dark:hover:text-white hover:bg-[var(--soft-cloud)] dark:hover:bg-white/5"
+                  }`}
+                >
+                  {link.label}
+                  {isActive && (
+                    <span className="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-[var(--ink)] dark:bg-white align-middle" />
+                  )}
+                </Link>
+              );
+            })}
           </div>
         </div>
       </nav>

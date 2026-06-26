@@ -205,7 +205,9 @@ export default function PublicMatchesPage() {
 
   const getTeamName = (team: any, defaultName: string) => {
     if (!team) return defaultName;
-    if (team.name && team.name !== "Tim Baru") return team.name;
+    if (team.name && team.name !== "Tim Baru") {
+      return team.name.replace(/\s*\/\s*/g, ' & ');
+    }
     const p1 = team.p1?.fullname;
     const p2 = team.p2?.fullname;
     if (p1 && p2) return `${p1} & ${p2}`;
@@ -358,11 +360,11 @@ export default function PublicMatchesPage() {
                       <table className="w-full text-sm border-collapse">
                         <thead className="bg-slate-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
                           <tr>
-                            <th className="px-5 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Turnamen</th>
+                            <th className="px-5 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden sm:table-cell">Turnamen</th>
                             <th className="px-5 py-4 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tim 1</th>
                             <th className="px-5 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">Skor</th>
                             <th className="px-5 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tim 2</th>
-                            <th className="px-5 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
+                            <th className="px-5 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden sm:table-cell">Status</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-gray-800/50">
@@ -370,7 +372,7 @@ export default function PublicMatchesPage() {
                             const isDone = m.status === "completed";
                             return (
                               <tr key={m.id} className="transition-colors">
-                                <td className="px-5 py-4">
+                                <td className="px-5 py-4 hidden sm:table-cell">
                                   <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 truncate max-w-[160px] block">
                                     {m.tournaments?.name || "Latihan Bersama"}
                                   </span>
@@ -394,7 +396,7 @@ export default function PublicMatchesPage() {
                                     {getTeamName(m.team2, "Tim 2")}
                                   </span>
                                 </td>
-                                <td className="px-5 py-4 text-center whitespace-nowrap">
+                                <td className="px-5 py-4 text-center whitespace-nowrap hidden sm:table-cell">
                                   <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-zinc-400">
                                     <span className={`w-2 h-2 rounded-full shadow-sm ${STATUS_DOT[m.status] || "bg-gray-400"}`} />
                                     {isDone ? "Selesai" : m.status === "ongoing" ? "Berlangsung" : "Mendatang"}

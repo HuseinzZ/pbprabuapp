@@ -328,7 +328,7 @@ function Lightbox({ items, initialIndex, onClose }: LightboxProps) {
           onTouchEnd={handleTouchEnd}
         >
           <div
-            className="relative flex items-center justify-center max-w-full max-h-full"
+            className="relative flex items-center justify-center w-full h-full max-w-full max-h-full"
             style={{ 
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, 
               transformOrigin: "center center",
@@ -340,7 +340,7 @@ function Lightbox({ items, initialIndex, onClose }: LightboxProps) {
               key={item.id}
               src={getImageUrl(item.image_url)}
               alt={item.title}
-              className="object-contain shadow-2xl rounded-sm max-w-full max-h-full"
+              className="object-contain shadow-2xl rounded-sm w-full h-full max-w-full max-h-full"
               style={{ display: "block", userSelect: "none" }}
               draggable={false}
             />

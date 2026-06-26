@@ -47,7 +47,7 @@ export const INITIAL_FORM: TournamentFormData = {
   points_id: "",
   name: "",
   description: "",
-  location: "",
+  location: "4H2M+VPV, Jl. Pajajaran, Pajajaran, Kec. Cicendo, Kota Bandung, Jawa Barat 40173",
   start_date: "",
   registration_deadline: "",
   max_participants: "",

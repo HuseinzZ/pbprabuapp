@@ -325,7 +325,7 @@ export default function TournamentsPage() {
                             <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-12">#</th>
                             <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pemain</th>
                             <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Posisi</th>
-                            <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Poin</th>
+                            <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden sm:table-cell">Poin</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -346,9 +346,9 @@ export default function TournamentsPage() {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span className="px-2 py-0.5 bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded text-xs font-bold">{label}</span>
+                                  <span className="px-2 py-0.5 bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded text-xs font-bold whitespace-nowrap">{label}</span>
                                 </td>
-                                <td className="px-4 py-3 text-right font-bold text-brand-500 tabular-nums">{r.points_earned} pts</td>
+                                <td className="px-4 py-3 text-right font-bold text-brand-500 tabular-nums hidden sm:table-cell">{r.points_earned} pts</td>
                               </tr>
                             );
                           })}
@@ -365,8 +365,8 @@ export default function TournamentsPage() {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-between items-center shrink-0 gap-3">
-          <button onClick={() => setSelectedTournament(null)} className="px-6 py-2.5 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-white text-sm font-bold hover:bg-slate-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 transition-colors">
+        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col sm:flex-row justify-center sm:justify-between items-center shrink-0 gap-3">
+          <button onClick={() => setSelectedTournament(null)} className="px-6 py-2.5 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-white text-sm font-bold hover:bg-slate-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 transition-colors w-full sm:w-auto">
             Tutup
           </button>
           {selectedTournament && (selectedTournament.status === "upcoming" || selectedTournament.status === "registration") && (
@@ -391,7 +391,7 @@ export default function TournamentsPage() {
               <button
                 onClick={() => handleRegisterTournament(selectedTournament.id)}
                 disabled={registeringId === selectedTournament.id}
-                className="px-6 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white text-sm font-bold transition-colors shadow-sm"
+                className="px-6 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white text-sm font-bold transition-colors shadow-sm w-full sm:w-auto"
               >
                 {registeringId === selectedTournament.id ? "Mendaftar..." : "Daftar Sekarang"}
               </button>
@@ -416,12 +416,15 @@ export default function TournamentsPage() {
         </div>
 
         {/* Filter chips */}
-        <div className="flex items-center gap-2 flex-wrap mb-8">
+        <div className="flex items-center gap-2 overflow-x-auto mb-8 pb-2 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide snap-x" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <style dangerouslySetInnerHTML={{__html: `
+            .scrollbar-hide::-webkit-scrollbar { display: none; }
+          `}} />
           {FILTERS.map((f) => (
             <button
               key={f.key}
               onClick={() => setActiveFilter(f.key)}
-              className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-colors duration-200 ${
+              className={`shrink-0 whitespace-nowrap px-6 py-2.5 rounded-full text-sm font-semibold transition-colors duration-200 snap-start ${
                 activeFilter === f.key
                   ? "bg-zinc-950 text-white dark:bg-white dark:text-slate-900 shadow-md"
                   : "bg-white text-slate-700 dark:bg-gray-800/40 dark:text-gray-400 hover:bg-slate-50 hover:text-slate-900 dark:hover:text-white shadow-sm border border-slate-200 dark:border-gray-800"

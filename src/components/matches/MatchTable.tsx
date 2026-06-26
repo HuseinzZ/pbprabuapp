@@ -222,8 +222,8 @@ function MatchGrid({ matches: initialMatches, onInputScore, onDeleteMatch }: { m
        // Logs
        try {
          const logs = JSON.parse(localStorage.getItem('match_points_logs') || '[]');
-         const t1 = targetMatch.teams_team1?.name ?? 'Tim 1';
-         const t2 = targetMatch.teams_team2?.name ?? 'Tim 2';
+         const t1 = (targetMatch.teams_team1?.name ?? 'Tim 1').replace(/\//g, ' & ');
+         const t2 = (targetMatch.teams_team2?.name ?? 'Tim 2').replace(/\//g, ' & ');
          const teamName = team === 1 ? t1 : t2;
          logs.push({
            id: `log-${Date.now()}`,
@@ -241,6 +241,8 @@ function MatchGrid({ matches: initialMatches, onInputScore, onDeleteMatch }: { m
       {matches.map((match, idx) => {
         const t1 = match.teams_team1;
         const t2 = match.teams_team2;
+        const t1Name = (t1?.name ?? 'Tim 1').replace(/\//g, ' & ');
+        const t2Name = (t2?.name ?? 'Tim 2').replace(/\//g, ' & ');
 
         const tDate = match.tournaments?.start_date ? new Date(match.tournaments.start_date) : null;
         let isToday = false, isPast = false;
@@ -295,7 +297,7 @@ function MatchGrid({ matches: initialMatches, onInputScore, onDeleteMatch }: { m
                 
                 {/* Team A */}
                 <div className="text-center flex-1 min-w-0 pr-2">
-                  <p className="text-xs font-bold text-slate-800 dark:text-white truncate" title={t1?.name ?? "—"}>{t1?.name ?? "—"}</p>
+                  <p className="text-xs font-bold text-slate-800 dark:text-white truncate" title={t1Name}>{t1Name}</p>
                   <span className="text-[9px] text-slate-400 dark:text-gray-500 uppercase font-bold tracking-widest">TIM 1</span>
                 </div>
 
@@ -324,7 +326,7 @@ function MatchGrid({ matches: initialMatches, onInputScore, onDeleteMatch }: { m
 
                 {/* Team B */}
                 <div className="text-center flex-1 min-w-0 pl-2">
-                  <p className="text-xs font-bold text-slate-800 dark:text-white truncate" title={t2?.name ?? "—"}>{t2?.name ?? "—"}</p>
+                  <p className="text-xs font-bold text-slate-800 dark:text-white truncate" title={t2Name}>{t2Name}</p>
                   <span className="text-[9px] text-slate-400 dark:text-gray-500 uppercase font-bold tracking-widest">TIM 2</span>
                 </div>
 

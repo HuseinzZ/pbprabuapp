@@ -7,9 +7,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { MatchStatusDonut, TopPlayersBar, MatchesPerDayLine } from '@/components/dashboard/DashboardCharts';
+import { STATUS_CONFIG } from '@/app/admin/tournaments/types';
 
 export const metadata: Metadata = {
-  title: 'Dashboard Admin | PB Prabu',
+  title: 'Dashboard | PB Prabu Bandung',
   description: 'Ringkasan data PB Prabu Bandung',
 };
 
@@ -126,12 +127,7 @@ export default async function AdminDashboard() {
   const playerPoints = (topPlayers ?? []).map((p: any) => p.ranking_points ?? 0);
 
   // ── Status badge ────────────────────────────────────────────────────────────
-  const STATUS_MAP: Record<string, { label: string; cls: string }> = {
-    ongoing: { label: 'Berlangsung', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400' },
-    completed: { label: 'Selesai', cls: 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400' },
-    cancelled: { label: 'Dibatalkan', cls: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' },
-    scheduled: { label: 'Dijadwalkan', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400' },
-  };
+  // Using STATUS_CONFIG from '@/app/admin/tournaments/types'
 
   const PHASE_LABEL: Record<string, string> = {
     RR: 'Grup',
@@ -247,7 +243,7 @@ export default async function AdminDashboard() {
               <p className="text-sm text-gray-400 py-6 text-center">Belum ada turnamen</p>
             )}
             {(recentTournaments ?? []).map((t: any) => {
-              const s = STATUS_MAP[t.status] ?? { label: t.status, cls: 'bg-gray-100 text-gray-600' };
+              const sc = STATUS_CONFIG[t.status as keyof typeof STATUS_CONFIG] ?? { label: t.status, bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', dot: 'bg-gray-400' };
               return (
                 <div key={t.id} className="flex items-start justify-between gap-2 p-3 rounded-xl bg-gray-50 dark:bg-white/[0.03] hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors">
                   <div className="min-w-0">
@@ -256,7 +252,10 @@ export default async function AdminDashboard() {
                       {new Date(t.start_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
                     </p>
                   </div>
-                  <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.cls}`}>{s.label}</span>
+                  <span className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${sc.bg} ${sc.text}`}>
+                    <span className={`w-1 h-1 rounded-full ${sc.dot}`} />
+                    {sc.label}
+                  </span>
                 </div>
               );
             })}
@@ -278,8 +277,8 @@ export default async function AdminDashboard() {
             <p className="text-sm text-gray-400 col-span-3 text-center py-6">Belum ada pertandingan selesai</p>
           )}
           {(recentMatches ?? []).map((m: any) => {
-            const t1 = m.teams_team1?.name ?? 'Tim 1';
-            const t2 = m.teams_team2?.name ?? 'Tim 2';
+            const t1 = (m.teams_team1?.name ?? 'Tim 1').replace(/\//g, ' & ');
+            const t2 = (m.teams_team2?.name ?? 'Tim 2').replace(/\//g, ' & ');
             const s1 = m.score_team1 ?? 0;
             const s2 = m.score_team2 ?? 0;
             const t1Win = s1 > s2;

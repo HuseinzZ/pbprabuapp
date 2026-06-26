@@ -14,6 +14,8 @@ export type Tournament = {
   max_participants: number;
   prize_pool: number;
   entry_fee?: number;
+  match_format?: string;
+  gender_category?: string;
 };
 
 export type Match = {
@@ -35,6 +37,7 @@ interface HomeViewProps {
     activeMatches: number;
   };
   isAuthenticated?: boolean;
+  carousels?: { id: string; title: string; image_url: string; }[];
 }
 
 const DEFAULT_SLIDES = [
@@ -49,6 +52,7 @@ export default function AuraHomeView({
   matches,
   stats,
   isAuthenticated = false,
+  carousels = [],
 }: HomeViewProps) {
   // Image Slider Logic
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -62,9 +66,18 @@ export default function AuraHomeView({
     currentPage * itemsPerPage
   );
 
+  const slides = carousels.length > 0 
+    ? carousels.map(c => ({
+        title: c.title,
+        src: c.image_url.startsWith('http') || c.image_url.startsWith('/') 
+             ? c.image_url 
+             : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/gallery/${c.image_url}`
+      }))
+    : DEFAULT_SLIDES;
+
   const nextSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev + 1) % DEFAULT_SLIDES.length);
-  }, []);
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  }, [slides.length]);
 
   useEffect(() => {
     const timer = setInterval(nextSlide, 5500);
@@ -83,7 +96,7 @@ export default function AuraHomeView({
         
         {/* Full Width Image Slider (Background on Desktop, Top on Mobile) */}
         <div className="relative w-full h-[45vh] sm:h-[50vh] md:absolute md:inset-0 md:h-full z-0">
-          {DEFAULT_SLIDES.map((slide, idx) => (
+          {slides.map((slide, idx) => (
             <div
               key={idx}
               className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
@@ -95,24 +108,29 @@ export default function AuraHomeView({
                 alt={slide.title}
                 className="w-full h-full object-cover"
               />
+              <div className="absolute inset-0 bg-black/20 z-10" />
             </div>
           ))}
           {/* Subtle dark overlay to ensure white text is always readable (Desktop Only) */}
           <div className="hidden md:block absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-20 pointer-events-none" />
 
           {/* Carousel Arrows (Inside Image) */}
-          <button
-            onClick={() => setCurrentSlide((prev) => (prev - 1 + DEFAULT_SLIDES.length) % DEFAULT_SLIDES.length)}
-            className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-40 p-2 flex items-center justify-center text-white drop-shadow-md hover:text-white/60 transition-all duration-300"
-          >
-            <ChevronRight className="w-5 h-5 md:w-6 md:h-6 rotate-180" />
-          </button>
-          <button
-            onClick={nextSlide}
-            className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-40 w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white transition-all duration-300 backdrop-blur-md shadow-lg"
-          >
-            <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
-          </button>
+          {slides.length > 1 && (
+            <button
+              onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
+              className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-40 p-2 flex items-center justify-center text-white drop-shadow-md hover:text-white/60 transition-all duration-300"
+            >
+              <ChevronRight className="w-5 h-5 md:w-6 md:h-6 rotate-180" />
+            </button>
+          )}
+          {slides.length > 1 && (
+            <button
+              onClick={nextSlide}
+              className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-40 w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white transition-all duration-300 backdrop-blur-md shadow-lg"
+            >
+              <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+          )}
         </div>
 
         {/* Text Content Area */}
@@ -149,20 +167,22 @@ export default function AuraHomeView({
           </div>
 
           {/* Carousel Indicators (Dots) */}
-          <div className="mt-8 md:mt-0 md:absolute md:bottom-12 md:left-16 lg:left-24 z-20 flex gap-2 justify-center w-full md:w-auto">
-            {DEFAULT_SLIDES.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentSlide(idx)}
-                className={`h-1.5 rounded-full transition-all duration-500 shadow-sm ${
-                  idx === currentSlide 
-                    ? "w-6 bg-slate-800 dark:bg-white md:!bg-white" 
-                    : "w-1.5 bg-slate-300 hover:bg-slate-400 dark:bg-white/40 dark:hover:bg-white/80 md:!bg-white/40 md:hover:!bg-white/80"
-                }`}
-                aria-label={`Go to slide ${idx + 1}`}
-              />
-            ))}
-          </div>
+          {slides.length > 1 && (
+            <div className="mt-8 md:mt-0 md:absolute md:bottom-12 md:left-16 lg:left-24 z-20 flex gap-2 justify-center w-full md:w-auto">
+              {slides.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentSlide(idx)}
+                  className={`h-1.5 rounded-full transition-all duration-500 shadow-sm ${
+                    idx === currentSlide 
+                      ? "w-6 bg-slate-800 dark:bg-white md:!bg-white" 
+                      : "w-1.5 bg-slate-300 hover:bg-slate-400 dark:bg-white/40 dark:hover:bg-white/80 md:!bg-white/40 md:hover:!bg-white/80"
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -208,19 +228,19 @@ export default function AuraHomeView({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Upcoming Tournaments Panel */}
         <div className="lg:col-span-8 p-6 sm:p-8 rounded-2xl border border-solid transition-all duration-300 bg-white dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 shadow-md shadow-stone-100/50 dark:shadow-none">
-          <div className="flex justify-between items-center mb-6 border-b border-solid pb-4 border-stone-200/40 dark:border-zinc-800/40">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
+          <div className="flex flex-row items-start justify-between gap-4 mb-6 border-b border-solid pb-4 border-stone-200/40 dark:border-zinc-800/40">
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
               </span>
-              <h2 className="text-lg font-bold tracking-tight dark:text-white">Turnamen Hari Ini & Mendatang</h2>
+              <h2 className="text-base sm:text-lg font-bold tracking-tight dark:text-white leading-tight">Turnamen Hari Ini & Mendatang</h2>
             </div>
             <Link
-              href="/tournaments"
-              className="text-xs font-semibold text-blue-500 hover:text-blue-400 flex items-center gap-1 cursor-pointer"
+              href={isAuthenticated ? "/user/tournaments" : "/tournaments"}
+              className="text-xs font-semibold text-blue-500 hover:text-blue-400 flex items-center gap-1 cursor-pointer shrink-0 mt-1"
             >
-              Semua Turnamen <ChevronRight className="w-4 h-4" />
+              Semua <span className="hidden sm:inline">Turnamen</span> <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
 
@@ -230,38 +250,35 @@ export default function AuraHomeView({
                 {currentTournaments.map((tournament) => (
                   <div
                     key={tournament.id}
-                    className="p-5 rounded-xl border border-solid transition-all duration-300 relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-4 bg-stone-50 dark:bg-zinc-900/40 border-stone-200/80 dark:border-zinc-800/50"
+                    className="p-4 sm:p-5 rounded-xl border border-solid transition-all duration-300 relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-4 bg-stone-50 dark:bg-zinc-900/40 border-stone-200/80 dark:border-zinc-800/50"
                   >
-                    <div className={`absolute top-2 left-2 text-white text-[9px] font-mono font-bold tracking-widest px-1.5 py-0.5 rounded uppercase ${tournament.status === 'ongoing' ? 'bg-blue-600' : 'bg-emerald-600'}`}>
-                      {tournament.status === 'ongoing' ? 'HARI INI' : 'MENDATANG'}
-                    </div>
-
-                    {/* Tournament Info */}
-                    <div className="flex-1 mt-2 sm:mt-0">
-                      <span className="text-xs block font-mono text-blue-500 mb-1">
+                    {/* Tournament Info (Badge, Date, Name) */}
+                    <div className="flex-1 flex flex-col items-start gap-1 w-full">
+                      <div className={`text-white text-[9px] font-mono font-bold tracking-widest px-1.5 py-0.5 rounded uppercase w-fit mb-1 ${tournament.status === 'ongoing' ? 'bg-blue-600' : 'bg-emerald-600'}`}>
+                        {tournament.status === 'ongoing' ? 'HARI INI' : 'MENDATANG'}
+                      </div>
+                      <span className="text-xs font-mono text-blue-500">
                         {new Date(tournament.start_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
                       </span>
                       <h4 className="text-base font-bold dark:text-zinc-100">{tournament.name}</h4>
                     </div>
 
-                    {/* Details */}
-                    <div className="flex-1 text-left sm:text-center">
-                      <span className="text-xs block text-stone-500 dark:text-zinc-400 mb-1">
-                        📍 {tournament.location || "TBA"}
-                      </span>
+                    {/* Details (Location, Price) */}
+                    <div className="flex-1 w-full text-left sm:text-center mt-1 sm:mt-0">
+                      <div className="text-xs text-stone-500 dark:text-zinc-400 mb-1 flex items-start sm:justify-center gap-1.5">
+                        <span className="shrink-0">📍</span> 
+                        <span className="line-clamp-2 leading-relaxed">{tournament.location || "TBA"}</span>
+                      </div>
                       <span className="text-sm font-semibold block text-blue-500">
                         Biaya: Rp {(tournament.entry_fee || 0).toLocaleString('id-ID')}
                       </span>
                     </div>
 
-                    <div className="w-full sm:w-auto text-center p-3">
-                      <Link
-                        href={isAuthenticated ? `/tournaments/${tournament.id}` : "auth/login"}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold tracking-wider uppercase transition-colors bg-stone-200 dark:bg-zinc-800 text-stone-800 dark:text-zinc-200 hover:bg-stone-300 dark:hover:bg-zinc-700"
-                      >
-                        {/* <Trophy className="w-3.5 h-3.5" /> */}
-                        Daftar Turnamen
-                      </Link>
+                    {/* Match Format Badge */}
+                    <div className="w-full sm:w-auto text-left sm:text-center mt-2 sm:mt-0 shrink-0">
+                      <div className="inline-flex w-full sm:w-auto justify-center items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold tracking-wider uppercase bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
+                        {tournament.match_format ? `${tournament.match_format} ${tournament.gender_category || ''}`.trim() : "TBA"}
+                      </div>
                     </div>
                   </div>
                 ))}

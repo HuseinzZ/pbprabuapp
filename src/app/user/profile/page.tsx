@@ -312,7 +312,7 @@ export default function UserProfilePage() {
           {/* Tombol Edit */}
           <Link
             href="/user/profile/edit"
-            className="mt-4 w-4/5 h-10 rounded-full border border-gray-700 text-sm font-semibold text-gray-300 hover:bg-white hover:text-black transition-all flex items-center justify-center gap-2 group/edit"
+            className="mt-4 w-4/5 h-10 rounded-full border border-gray-300 dark:border-gray-700 text-sm font-semibold text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white dark:hover:text-black transition-all flex items-center justify-center gap-2 group/edit"
           >
             <Edit3 className="w-4 h-4 group-hover/edit:text-black" /> Edit Profile
           </Link>
@@ -466,37 +466,48 @@ export default function UserProfilePage() {
                   const partnerName = extractPartner(myTeamName || "", profile?.fullname || "");
 
                   return (
-                    <div key={m.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-800/60 bg-gray-50 dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors gap-4">
-                      <div className="flex-1">
-                        <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm md:text-base mb-2">
+                    <div key={m.id} className="flex flex-col p-4 rounded-xl border border-gray-200 dark:border-gray-800/60 bg-gray-50 dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors gap-3">
+                      
+                      {/* Header: Tournament & Result Badge */}
+                      <div className="flex items-center justify-between gap-4">
+                        <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm md:text-base truncate">
                           {m.tournaments?.name || "Pertandingan Persahabatan"}
                         </h4>
-                        <div className="flex items-center gap-4 text-xs font-semibold">
-                          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                            <span className="text-[9px] uppercase tracking-widest text-slate-400">Rekan</span>
-                            <span className="text-emerald-600 dark:text-emerald-400 truncate max-w-[120px]">{partnerName}</span>
-                          </div>
-                          <span className="text-slate-300 dark:text-slate-600 font-black">VS</span>
-                          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                            <span className="text-[9px] uppercase tracking-widest text-slate-400">Lawan</span>
-                            <span className="text-rose-600 dark:text-rose-400 truncate max-w-[120px]">{oppTeamName || "-"}</span>
-                          </div>
-                        </div>
-                        <p className="text-[10px] font-medium text-gray-400 mt-2 tracking-wider uppercase">
-                          TANGGAL: {new Date(m.created_at).toLocaleDateString('id-ID')}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 shrink-0">
-                        <div className="flex items-center gap-2 font-black text-xl text-gray-900 dark:text-white">
-                          <span className={isWin ? "text-emerald-500" : ""}>{myScore || 0}</span>
-                          <span className="text-gray-400 font-light">-</span>
-                          <span>{opScore || 0}</span>
-                        </div>
-                        <span className={`px-3 py-1 text-[10px] font-bold tracking-widest border rounded-md ${resultColor}`}>
+                        <span className={`px-2.5 py-1 text-[9px] sm:text-[10px] font-bold tracking-widest border rounded-md shrink-0 ${resultColor}`}>
                           {resultText}
                         </span>
                       </div>
+                      
+                      {/* Match Details: Nama - Skor - Nama */}
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 my-2">
+                        {/* Team 1 (My Team) */}
+                        <div className="text-right flex flex-col items-end">
+                           <span className="text-[8px] sm:text-[9px] uppercase tracking-widest text-slate-400 mb-0.5">Tim Anda</span>
+                           <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-sm line-clamp-2">
+                             {myTeamName ? myTeamName.replace(/\s*\/\s*/g, ' & ') : "-"}
+                           </span>
+                        </div>
+                        
+                        {/* Score */}
+                        <div className="flex items-center justify-center gap-1.5 sm:gap-3 font-black text-lg sm:text-2xl text-gray-900 dark:text-white px-3 sm:px-4 py-1.5 sm:py-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
+                          <span className={isWin ? "text-emerald-500" : ""}>{myScore || 0}</span>
+                          <span className="text-gray-300 dark:text-gray-600 font-light">-</span>
+                          <span className={!isWin && !isDraw ? "text-rose-500" : ""}>{opScore || 0}</span>
+                        </div>
+
+                        {/* Team 2 (Opponent) */}
+                        <div className="text-left flex flex-col items-start">
+                           <span className="text-[8px] sm:text-[9px] uppercase tracking-widest text-slate-400 mb-0.5">Lawan</span>
+                           <span className="text-rose-600 dark:text-rose-400 font-bold text-xs sm:text-sm line-clamp-2">
+                             {oppTeamName ? oppTeamName.replace(/\s*\/\s*/g, ' & ') : "-"}
+                           </span>
+                        </div>
+                      </div>
+
+                      {/* Footer: Date */}
+                      <p className="text-[9px] sm:text-[10px] font-medium text-gray-400 tracking-wider uppercase text-center sm:text-left">
+                        TANGGAL: {new Date(m.created_at).toLocaleDateString('id-ID')}
+                      </p>
                     </div>
                   );
                 })

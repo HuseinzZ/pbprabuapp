@@ -23,76 +23,59 @@ export default function SummaryStats({ tournaments }: SummaryStatsProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {/* KPI 1 */}
-      <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
-        <div className="space-y-1">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider leading-none">
-            TOTAL TURNAMEN
-          </p>
-          <p className="text-xl font-extrabold text-slate-800 dark:text-white leading-none mt-1">
-            {totalTrn}
-          </p>
-          <p className="text-[9px] text-teal-600 dark:text-teal-400 font-bold flex items-center gap-0.5 mt-1">
-            <CircleDot className="w-2.5 h-2.5" /> {activeTrn} Berlangsung Aktif
-          </p>
-        </div>
-        <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+      <div 
+        className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 hover:border-emerald-300 dark:hover:border-emerald-700 shadow-sm transition-all duration-250 flex items-center gap-4 group cursor-default"
+      >
+        <div className="p-3 bg-slate-100 dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 rounded-lg group-hover:bg-emerald-600 group-hover:text-white dark:group-hover:bg-emerald-500 transition-all duration-250">
           <Trophy className="w-5 h-5" />
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest leading-none">TOTAL TURNAMEN</p>
+          <div className="flex items-baseline gap-1 mt-1.5 leading-none">
+            <span className="text-2xl font-bold text-slate-800 dark:text-white">{totalTrn}</span>
+            <span className="text-xs text-slate-400 dark:text-gray-500 font-medium">({activeTrn} aktif)</span>
+          </div>
         </div>
       </div>
 
       {/* KPI 2 */}
-      <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
-        <div className="space-y-1">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider leading-none">
-            DISTRIBUSI PRIZE POOL
-          </p>
-          <p className="text-xl font-extrabold text-slate-800 dark:text-white leading-none mt-1">
-            {formatRupiah(totalPrizePoints)}
-          </p>
-          <p className="text-[9px] text-amber-600 dark:text-amber-400 font-bold mt-1">
-            Total Pool All-Time
-          </p>
-        </div>
-        <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/30 rounded-lg flex items-center justify-center text-amber-600 dark:text-amber-400">
+      <div 
+        className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 hover:border-amber-300 dark:hover:border-amber-700 shadow-sm transition-all duration-250 flex items-center gap-4 group cursor-default"
+      >
+        <div className="p-3 bg-slate-100 dark:bg-gray-800 text-amber-600 dark:text-amber-400 rounded-lg group-hover:bg-amber-600 group-hover:text-white dark:group-hover:bg-amber-500 transition-all duration-250">
           <Medal className="w-5 h-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest leading-none truncate">PRIZE POOL</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white mt-1.5 leading-none truncate">{formatRupiah(totalPrizePoints)}</p>
         </div>
       </div>
 
       {/* KPI 3 */}
-      <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
-        <div className="space-y-1">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider leading-none">
-            TURNAMEN SELESAI
-          </p>
-          <p className="text-xl font-extrabold text-slate-800 dark:text-white leading-none mt-1">
-            {completedTrn}
-          </p>
-          <p className="text-[9px] text-blue-600 dark:text-blue-400 font-bold mt-1">
-            Sudah Selesai
-          </p>
-        </div>
-        <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+      <div 
+        className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 shadow-sm transition-all duration-250 flex items-center gap-4 group cursor-default"
+      >
+        <div className="p-3 bg-slate-100 dark:bg-gray-800 text-blue-600 dark:text-blue-400 rounded-lg group-hover:bg-blue-600 group-hover:text-white dark:group-hover:bg-blue-500 transition-all duration-250">
           <CheckCircle2 className="w-5 h-5" />
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest leading-none">SELESAI</p>
+          <p className="text-2xl font-bold text-slate-800 dark:text-white mt-1.5 leading-none">{completedTrn}</p>
         </div>
       </div>
 
       {/* KPI 4 */}
-      <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
-        <div className="space-y-1">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider leading-none">
-            TURNAMEN MENDATANG
-          </p>
-          <p className="text-xl font-extrabold text-slate-800 dark:text-white leading-none mt-1">
-            {upcomingTrn}
-          </p>
-          <p className="text-[9px] text-purple-600 dark:text-purple-400 font-bold mt-1">
-            Akan Diselenggarakan
-          </p>
-        </div>
-        <div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/30 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400">
+      <div 
+        className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 hover:border-purple-300 dark:hover:border-purple-700 shadow-sm transition-all duration-250 flex items-center gap-4 group cursor-default"
+      >
+        <div className="p-3 bg-slate-100 dark:bg-gray-800 text-purple-600 dark:text-purple-400 rounded-lg group-hover:bg-purple-600 group-hover:text-white dark:group-hover:bg-purple-500 transition-all duration-250">
           <CalendarClock className="w-5 h-5" />
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest leading-none">MENDATANG</p>
+          <p className="text-2xl font-bold text-slate-800 dark:text-white mt-1.5 leading-none">{upcomingTrn}</p>
         </div>
       </div>
     </div>

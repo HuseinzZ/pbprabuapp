@@ -12,6 +12,8 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { createClient } from '@/lib/supabase/client';
 import DeleteParticipantModal from './DeleteParticipantModal';
+import ConfirmParticipantModal from './ConfirmParticipantModal';
+import DisqualifyParticipantModal from './DisqualifyParticipantModal';
 
 interface Props {
   tournaments: Tournament[];
@@ -30,10 +32,18 @@ export default function ParticipantMasterDetail({ tournaments, participants, fet
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Modal State
+  // Modal States
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [participantToDelete, setParticipantToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [participantToDelete, setParticipantToDelete] = useState<{ id: string; name: string } | null>(null);
+
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [participantToConfirm, setParticipantToConfirm] = useState<{ id: string; name: string } | null>(null);
+
+  const [disqualifyModalOpen, setDisqualifyModalOpen] = useState(false);
+  const [isDisqualifying, setIsDisqualifying] = useState(false);
+  const [participantToDisqualify, setParticipantToDisqualify] = useState<{ id: string; name: string } | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<'date_desc' | 'prize_desc' | 'name_asc'>('date_desc');
 
@@ -140,23 +150,49 @@ export default function ParticipantMasterDetail({ tournaments, participants, fet
   };
 
   // Confirm participant
-  const handleConfirmParticipant = async (id: string, name: string) => {
-    if (!window.confirm(`Yakin ingin mengkonfirmasi peserta ${name}?`)) return;
-    
-    await supabase.from("tournament_participants").update({ status: 'confirmed' }).eq("id", id);
-    onAddLog(`Sistem mengkonfirmasi peserta ${name}`, 'update');
-    toast.success("Berhasil mengkonfirmasi peserta!");
-    fetchParticipants();
+  const handleConfirmParticipant = (id: string, name: string) => {
+    setParticipantToConfirm({ id, name });
+    setConfirmModalOpen(true);
+  };
+
+  const executeConfirmParticipant = async () => {
+    if (!participantToConfirm) return;
+    setIsConfirming(true);
+    try {
+      await supabase.from("tournament_participants").update({ status: 'confirmed' }).eq("id", participantToConfirm.id);
+      onAddLog(`Sistem mengkonfirmasi peserta ${participantToConfirm.name}`, 'update');
+      toast.success("Berhasil mengkonfirmasi peserta!");
+      fetchParticipants();
+    } catch (error) {
+      toast.error("Gagal mengkonfirmasi peserta");
+    } finally {
+      setIsConfirming(false);
+      setConfirmModalOpen(false);
+      setParticipantToConfirm(null);
+    }
   };
 
   // Disqualify participant
-  const handleDisqualifyParticipant = async (id: string, name: string) => {
-    if (!window.confirm(`Yakin ingin mendiskualifikasi peserta ${name}?`)) return;
-    
-    await supabase.from("tournament_participants").update({ status: 'disqualified' }).eq("id", id);
-    onAddLog(`Sistem mendiskualifikasi peserta ${name}`, 'update');
-    toast.success("Berhasil mendiskualifikasi peserta!");
-    fetchParticipants();
+  const handleDisqualifyParticipant = (id: string, name: string) => {
+    setParticipantToDisqualify({ id, name });
+    setDisqualifyModalOpen(true);
+  };
+
+  const executeDisqualifyParticipant = async () => {
+    if (!participantToDisqualify) return;
+    setIsDisqualifying(true);
+    try {
+      await supabase.from("tournament_participants").update({ status: 'disqualified' }).eq("id", participantToDisqualify.id);
+      onAddLog(`Sistem mendiskualifikasi peserta ${participantToDisqualify.name}`, 'update');
+      toast.success("Berhasil mendiskualifikasi peserta!");
+      fetchParticipants();
+    } catch (error) {
+      toast.error("Gagal mendiskualifikasi peserta");
+    } finally {
+      setIsDisqualifying(false);
+      setDisqualifyModalOpen(false);
+      setParticipantToDisqualify(null);
+    }
   };
 
   return (
@@ -553,6 +589,22 @@ export default function ParticipantMasterDetail({ tournaments, participants, fet
         isDeleting={isDeleting}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={executeDeleteParticipant}
+      />
+
+      <ConfirmParticipantModal
+        isOpen={confirmModalOpen}
+        participantName={participantToConfirm?.name || null}
+        isConfirming={isConfirming}
+        onClose={() => setConfirmModalOpen(false)}
+        onConfirm={executeConfirmParticipant}
+      />
+
+      <DisqualifyParticipantModal
+        isOpen={disqualifyModalOpen}
+        participantName={participantToDisqualify?.name || null}
+        isDisqualifying={isDisqualifying}
+        onClose={() => setDisqualifyModalOpen(false)}
+        onConfirm={executeDisqualifyParticipant}
       />
     </div>
   );

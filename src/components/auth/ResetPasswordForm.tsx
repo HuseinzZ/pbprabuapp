@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { ShieldCheck, Loader2, Check, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, Loader2, Check, AlertCircle, CheckCircle2, ArrowLeft, Save } from 'lucide-react';
 import ComponentCard from '@/components/common/ComponentCard';
 import Label from '@/components/form/Label';
 import Input from '@/components/form/input/InputField';
@@ -196,24 +196,25 @@ export default function ResetPasswordForm({ userId }: { userId?: string }) {
           )}
         </div>
 
-        <div className="flex gap-3 mt-2">
+        <div className="flex justify-between gap-3 pt-4 mt-2 border-t border-gray-100 dark:border-gray-800">
           <button
             type="button"
             onClick={handleBack}
             disabled={isProcessing}
-            className="flex flex-1 justify-center items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
           >
-            <ArrowLeft size={16} /><span>Kembali</span>
+            <ArrowLeft className="w-4 h-4" />
+            Kembali
           </button>
           <button
             type="submit"
             disabled={isProcessing}
-            className="flex flex-1 justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-500/20 disabled:opacity-50 gap-2 items-center"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-sm"
           >
             {saving ? (
-              <><Loader2 size={16} className="animate-spin" /><span>Menyimpan...</span></>
+              <><Loader2 className="w-4 h-4 animate-spin" /> Menyimpan...</>
             ) : (
-              <><ShieldCheck size={16} /><span>Simpan Password</span></>
+              <><Save className="w-4 h-4" /> Simpan</>
             )}
           </button>
         </div>

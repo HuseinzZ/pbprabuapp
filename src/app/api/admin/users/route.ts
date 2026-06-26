@@ -125,13 +125,28 @@ export async function PUT(req: Request) {
     }
 
     // Ambil user_id dari profile
-    const { data: profileData, error: profileFetchErr } = await supabaseAdmin
+    let profileData: any = null;
+    
+    // Coba cari berdasarkan id (digunakan oleh UserForm)
+    const { data: dataById } = await supabaseAdmin
       .from("profile")
-      .select("user_id")
+      .select("id, user_id")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
-    if (profileFetchErr || !profileData) {
+    profileData = dataById;
+
+    // Jika tidak ketemu, coba cari berdasarkan user_id (digunakan oleh ResetPasswordForm)
+    if (!profileData) {
+      const { data: dataByUserId } = await supabaseAdmin
+        .from("profile")
+        .select("id, user_id")
+        .eq("user_id", id)
+        .maybeSingle();
+      profileData = dataByUserId;
+    }
+
+    if (!profileData) {
       return NextResponse.json({ error: "Profil tidak ditemukan" }, { status: 404 });
     }
 
@@ -174,7 +189,7 @@ export async function PUT(req: Request) {
       const { error: profileErr } = await supabaseAdmin
         .from("profile")
         .update(profileUpdate)
-        .eq("id", id);
+        .eq("id", profileData.id);
 
       if (profileErr) {
         return NextResponse.json({ error: "Gagal update profil: " + profileErr.message }, { status: 400 });

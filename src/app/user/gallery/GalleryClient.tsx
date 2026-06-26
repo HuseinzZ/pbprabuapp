@@ -239,7 +239,7 @@ function Lightbox({ items, initialIndex, onClose }: LightboxProps) {
           onTouchEnd={handleTouchEnd}
         >
           <div
-            className="relative flex items-center justify-center max-w-full max-h-full"
+            className="relative flex items-center justify-center w-full h-full max-w-full max-h-full"
             style={{ 
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, 
               transformOrigin: "center center",
@@ -250,7 +250,7 @@ function Lightbox({ items, initialIndex, onClose }: LightboxProps) {
               key={item.id}
               src={getImageUrl(item.image_url)}
               alt={item.title}
-              className="object-contain shadow-2xl rounded-sm max-w-full max-h-full"
+              className="object-contain shadow-2xl rounded-sm w-full h-full max-w-full max-h-full"
               style={{ display: "block", userSelect: "none" }}
               draggable={false}
             />
@@ -364,33 +364,35 @@ export default function PublicGalleryClient() {
       ) : (
         <>
           {/* Toolbar */}
-          <div className="mb-6 flex items-center justify-center">
-            <div className="flex items-center gap-1 bg-white/50 dark:bg-gray-800/50 backdrop-blur-md rounded-2xl p-1.5 shadow-sm border border-gray-200 dark:border-gray-800 overflow-x-auto">
-              {filters.map((f) => {
-                // Determine if we should show this filter (only if items exist, except for "all")
-                const count = items.filter((i) => i.category === f).length;
-                if (f !== "all" && count === 0) return null;
-                
-                return (
-                  <button
-                    key={f}
-                    onClick={() => setActiveFilter(f)}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                      activeFilter === f
-                        ? "bg-brand-500 text-white shadow-md"
-                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-700/50"
-                    }`}
-                  >
-                    {CATEGORY_LABELS[f]}
-                    {f !== "all" && (
-                      <span className="ml-1.5 px-1.5 py-0.5 rounded-md bg-black/10 dark:bg-white/10 text-xs opacity-80">
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex items-center gap-2 overflow-x-auto mb-8 pb-2 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide snap-x" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <style dangerouslySetInnerHTML={{__html: `
+              .scrollbar-hide::-webkit-scrollbar { display: none; }
+            `}} />
+            {filters.map((f) => {
+              // Determine if we should show this filter (only if items exist, except for "all")
+              const count = items.filter((i) => i.category === f).length;
+              if (f !== "all" && count === 0) return null;
+              
+              return (
+                <button
+                  key={f}
+                  onClick={() => setActiveFilter(f)}
+                  className={`shrink-0 whitespace-nowrap px-6 py-2.5 rounded-full text-sm font-semibold transition-colors duration-200 snap-start ${
+                    activeFilter === f
+                      ? "bg-zinc-950 text-white dark:bg-white dark:text-slate-900 shadow-md"
+                      : "bg-white text-slate-700 dark:bg-gray-800/40 dark:text-gray-400 hover:bg-slate-50 hover:text-slate-900 dark:hover:text-white shadow-sm border border-slate-200 dark:border-gray-800"
+                  }`}
+                  aria-pressed={activeFilter === f}
+                >
+                  {CATEGORY_LABELS[f]}
+                  {f !== "all" && (
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded-md bg-black/10 dark:bg-white/10 text-xs opacity-80">
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Grid Container */}

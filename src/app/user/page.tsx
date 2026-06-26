@@ -29,7 +29,7 @@ export default async function HomePage() {
   ] = await Promise.all([
     supabase.from("profile").select("id", { count: "exact", head: true }).eq("is_active", true),
     supabase.from("matches").select("id", { count: "exact", head: true }),
-    supabase.from("tournaments").select("id, name, status, location, start_date, max_participants, prize_pool, entry_fee").in("status", ["upcoming", "ongoing"]).order("start_date", { ascending: true }),
+    supabase.from("tournaments").select("id, name, status, location, start_date, max_participants, prize_pool, entry_fee, match_format, gender_category").in("status", ["upcoming", "ongoing"]).order("start_date", { ascending: true }),
     supabase.from("matches").select("id, match_date, team1_score, team2_score, status, tournament_id, tournaments(name)").eq("status", "completed").order("match_date", { ascending: false }).limit(4),
     supabase.from("tournaments").select("prize_pool")
   ]);

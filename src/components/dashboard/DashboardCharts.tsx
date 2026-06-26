@@ -26,7 +26,7 @@ function useDarkMode(): boolean {
 function getThemeTokens(dark: boolean) {
   return {
     textColor: dark ? "#9ca3af" : "#6b7280",
-    gridColor: dark ? "#1f2937" : "#f3f4f6",
+    gridColor: dark ? "#374151" : "#f3f4f6",
     valueColor: dark ? "#f9fafb" : "#111827",
     bg: "transparent",
     apexTheme: dark ? ("dark" as const) : ("light" as const),
@@ -181,7 +181,7 @@ export function MatchesPerDayLine({ dates, counts }: MatchesPerDayLineProps) {
         stops: [0, 100],
       },
     },
-    colors: ["#6366f1"],
+    colors: ["#22c55e"],
     dataLabels: { enabled: false },
     xaxis: {
       categories: dates,
@@ -201,7 +201,7 @@ export function MatchesPerDayLine({ dates, counts }: MatchesPerDayLineProps) {
     },
     grid: { borderColor: t.gridColor, strokeDashArray: 4 },
     tooltip: { theme: t.apexTheme, y: { formatter: (v: number) => `${v} pertandingan` } },
-    markers: { size: 3, colors: ["#6366f1"], strokeWidth: 0 },
+    markers: { size: 3, colors: ["#22c55e"], strokeWidth: 0 },
     theme: { mode: t.apexTheme },
   };
 

@@ -40,11 +40,11 @@ export default function AboutSection() {
               Dengan platform digital ini, kami menyatukan seluruh ekosistem komunitas — manajemen pemain,
               penyelenggaraan turnamen, dan dokumentasi perjalanan bersama — dalam satu portal yang modern.
             </p>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/auth/register" className="bg-brand-600 hover:bg-brand-500 text-white font-bold !rounded-full px-8 py-3 transition-colors shadow-sm">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+              <Link href="/auth/register" className="bg-brand-600 hover:bg-brand-500 text-white font-bold !rounded-full px-8 py-3 transition-colors shadow-sm w-full sm:w-auto text-center">
                 Bergabung Sekarang
               </Link>
-              <Link href="/tournaments" className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-slate-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 font-bold !rounded-full px-8 py-3 transition-colors shadow-sm">
+              <Link href="/tournaments" className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-slate-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 font-bold !rounded-full px-8 py-3 transition-colors shadow-sm w-full sm:w-auto text-center">
                 Lihat Turnamen
               </Link>
             </div>
