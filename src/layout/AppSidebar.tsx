@@ -304,6 +304,7 @@ const AppSidebar: React.FC = () => {
             <>
               <Image
                 className="dark:hidden object-contain w-16 h-auto"
+                style={{ height: "auto" }}
                 src="/1.png"
                 alt="Logo"
                 width={100}
@@ -312,6 +313,7 @@ const AppSidebar: React.FC = () => {
               />
               <Image
                 className="hidden dark:block object-contain w-16 h-auto"
+                style={{ height: "auto" }}
                 src="/1.png"
                 alt="Logo"
                 width={100}
@@ -335,6 +337,7 @@ const AppSidebar: React.FC = () => {
               height={40}
               priority
               className="object-contain w-8 h-auto"
+              style={{ height: "auto" }}
             />
           )}
         </Link>

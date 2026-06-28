@@ -47,10 +47,23 @@ export default function GalleryForm({ itemToEdit, onClose, onSubmit }: GalleryFo
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setCurrentUserId(user.id);
-    });
-  }, [supabase.auth]);
+    const fetchProfileId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profile')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (profile) {
+          setCurrentUserId(profile.id);
+        }
+      }
+    };
+    
+    fetchProfileId();
+  }, [supabase]);
 
   // Validation States
   const [errors, setErrors] = useState<{ [key: string]: string }>({});

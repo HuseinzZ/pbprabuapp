@@ -24,7 +24,7 @@ type Tournament = {
   match_format: string | null;
   gender_category?: string | null;
   points: { name: string } | null;
-  tournament_participants?: { id: string }[];
+  tournament_participants?: { id: string; status?: string }[];
 };
 
 const FILTERS: { key: TournamentStatus; label: string }[] = [
@@ -89,7 +89,7 @@ export default function TournamentsPage() {
       setIsLoggedIn(!!session);
       const { data, error } = await supabase
         .from("tournaments")
-        .select("*, points(name), tournament_participants(id)")
+        .select("*, points(name), tournament_participants(id, status)")
         .order("start_date", { ascending: false });
       if (error) toast.error("Gagal memuat data turnamen.");
       setTournaments((data as any) || []);
@@ -116,7 +116,7 @@ export default function TournamentsPage() {
       .select("id, status, profile_id, profile:profile_id(fullname, avatar_url)")
       .eq("tournament_id", t.id);
     console.log("[Modal] participants:", pData, pErr);
-    setModalParticipants(pData || []);
+    setModalParticipants((pData || []).filter(p => p.status !== 'disqualified' && p.status !== 'withdrawn'));
 
     // Fetch rankings from point_histories for completed tournaments
     if (t.status === "completed") {
@@ -363,7 +363,8 @@ export default function TournamentsPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {filtered.map((t) => {
-              const registeredCount = t.tournament_participants ? t.tournament_participants.length : 0;
+              const activeParticipants = t.tournament_participants ? t.tournament_participants.filter(p => p.status !== "disqualified" && p.status !== "withdrawn") : [];
+              const registeredCount = activeParticipants.length;
               const max = t.max_participants || 0;
               const remaining = max > 0 ? Math.max(0, max - registeredCount) : 0;
               const percentage = max > 0 ? Math.min(100, (registeredCount / max) * 100) : 100;

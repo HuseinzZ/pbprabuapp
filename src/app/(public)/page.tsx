@@ -3,16 +3,16 @@ import { createClient } from "@/lib/supabase/server";
 import AuraHomeView from "@/components/users/AuraHomeView";
 import SponsorSection from "@/components/users/SponsorSection";
 
-export const metadata: Metadata = {
-  title: "PB Prabu Bandung – Portal Komunitas Badminton",
-  description:
-    "Portal resmi komunitas badminton PB Prabu Bandung. Daftar, ikuti turnamen, pantau ranking, jadwal pertandingan, dan nikmati galeri kegiatan komunitas.",
-  openGraph: {
-    title: "PB Prabu Bandung – Portal Komunitas Badminton",
-    description: "Portal resmi komunitas badminton PB Prabu Bandung.",
-    type: "website",
-  },
-};
+// export const metadata: Metadata = {
+//   title: "PB Prabu Bandung|Portal Komunitas Badminton",
+//   description:
+//     "Portal resmi komunitas badminton PB Prabu Bandung. Daftar, ikuti turnamen, pantau ranking, jadwal pertandingan, dan nikmati galeri kegiatan komunitas.",
+//   openGraph: {
+//     title: "PB Prabu Bandung – Portal Komunitas Badminton",
+//     description: "Portal resmi komunitas badminton PB Prabu Bandung.",
+//     type: "website",
+//   },
+// };
 
 export default async function HomePage() {
   const supabase = await createClient();

@@ -1,11 +1,5 @@
-import UserForm from "@/components/users/UserForm";
+import UserForm from "@/components/admin-users/UserForm";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
-import { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Tambah User | PB Prabu Bandung",
-  description: "Tambah pemain baru.",
-};
 
 export default function AddPlayerPage() {
   return (

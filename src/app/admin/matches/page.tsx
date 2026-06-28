@@ -30,7 +30,7 @@ function MatchesContent() {
   const urlTournamentDate = searchParams.has("date") ? searchParams.get("date") || "" : "";
   const urlTournament = searchParams.get("tournament") || "";
   const [matches, setMatches] = useState<Match[]>([]);
-  const [tournaments, setTournaments] = useState<{id: string, name: string}[]>([]);
+  const [tournaments, setTournaments] = useState<{id: string, name: string, start_date?: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [localSearch, setLocalSearch] = useState("");
@@ -236,7 +236,7 @@ function MatchesContent() {
             setTournamentDate={(val) => updateParams({ date: val })}
             tournamentId={urlTournament}
             setTournamentId={(val) => updateParams({ tournament: val })}
-            tournaments={tournaments}
+            tournaments={tournaments.filter(t => !urlTournamentDate || (t.start_date && t.start_date.startsWith(urlTournamentDate)))}
           />
           
           {/* We wrap Table to blend perfectly with section just like points page */}

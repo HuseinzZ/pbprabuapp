@@ -80,7 +80,7 @@ export default function GroupStandingsTable({ groupName, standings, allComplete 
                         ? "text-green-700 dark:text-green-400"
                         : "text-gray-900 dark:text-white"
                     }`}>
-                      {s.teamName}
+                      {s.teamName.replace(/\s*\/\s*/g, ' & ')}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-center text-xs text-gray-500 dark:text-gray-400">{s.played}</td>

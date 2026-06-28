@@ -86,7 +86,7 @@ export default function AdminSpinWheelPage() {
       await syncTournamentStatuses();
       const { data } = await supabase.from('tournaments')
         .select('id,name,status,match_format,gender_category')
-        .eq('status', 'ongoing')
+        .in('status', ['ongoing', 'upcoming', 'registration'])
         .order('start_date');
       
       const list = data || [];

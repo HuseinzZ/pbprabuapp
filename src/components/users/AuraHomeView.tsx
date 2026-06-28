@@ -42,9 +42,6 @@ interface HomeViewProps {
 
 const DEFAULT_SLIDES = [
   { src: "/2.jpg", title: "Badminton Competition" },
-  { src: "/3.jpeg", title: "Tournament Finals" },
-  { src: "/4.png", title: "Community Event" },
-  { src: "/5.jpg", title: "Community Event" },
 ];
 
 export default function AuraHomeView({

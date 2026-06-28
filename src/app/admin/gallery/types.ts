@@ -11,6 +11,7 @@ export interface GalleryItem {
   taken_at: string | null;
   is_published: boolean;
   uploaded_by: string | null;
+  profile?: { fullname: string } | null;
   created_at: string;
   updated_at: string;
 }

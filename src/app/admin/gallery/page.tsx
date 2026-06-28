@@ -58,7 +58,7 @@ export default function GalleryDashboard() {
     setLoading(true);
     const { data, error } = await supabase
       .from("gallery")
-      .select("*")
+      .select("*, profile(fullname)")
       .order("created_at", { ascending: false });
       
     if (error) {
@@ -248,7 +248,8 @@ export default function GalleryDashboard() {
       result = result.filter((img) => {
         const matchesTitle = img.title.toLowerCase().includes(q);
         const matchesDesc = (img.description || '').toLowerCase().includes(q);
-        const matchesCreator = (img.uploaded_by || '').toLowerCase().includes(q);
+        const uploaderName = img.profile?.fullname || img.uploaded_by || '';
+        const matchesCreator = uploaderName.toLowerCase().includes(q);
         return matchesTitle || matchesDesc || matchesCreator;
       });
     }
@@ -316,7 +317,7 @@ export default function GalleryDashboard() {
           `"${img.title.replace(/"/g, '""')}"`,
           `"${(img.description || '').replace(/"/g, '""')}"`,
           img.category,
-          `"${(img.uploaded_by || '').replace(/"/g, '""')}"`,
+          `"${(img.profile?.fullname || img.uploaded_by || '').replace(/"/g, '""')}"`,
           img.is_published ? 'Publik' : 'Privat',
           img.created_at
         ]);
@@ -603,7 +604,7 @@ export default function GalleryDashboard() {
                             {/* <div className="flex items-center justify-between text-[10px] text-slate-400 dark:text-gray-500 font-mono">
                               <div className="flex items-center gap-1 cursor-default">
                                 <User className="w-3 h-3 text-slate-400 dark:text-gray-500" />
-                                <span>{img.uploaded_by}</span>
+                                <span>{img.profile?.fullname || img.uploaded_by}</span>
                               </div>
                             </div> */}
 
@@ -810,7 +811,7 @@ export default function GalleryDashboard() {
                   <div className="pt-3 border-t border-slate-100 dark:border-gray-700 space-y-2.5 text-xs text-slate-600 dark:text-gray-300">
                     <div className="flex justify-between items-center">
                       <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-gray-500">PENGUNGGAH</span>
-                      <span className="font-semibold text-indigo-700 dark:text-indigo-400">{lightboxItem.uploaded_by || '-'}</span>
+                      <span className="font-semibold text-indigo-700 dark:text-indigo-400">{lightboxItem.profile?.fullname || lightboxItem.uploaded_by || '-'}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-gray-500">TANGGAL DIBUAT</span>
@@ -837,7 +838,7 @@ export default function GalleryDashboard() {
                     }}
                     className="flex-1 py-1.5 border border-slate-200 dark:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-700 rounded text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-gray-300 text-center transition cursor-pointer"
                   >
-                    Edit Karya
+                    Edit
                   </button>
                   <button
                     onClick={() => {

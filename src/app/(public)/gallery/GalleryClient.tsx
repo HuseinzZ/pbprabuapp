@@ -463,11 +463,11 @@ function GalleryCard({
           </div>
         </div>
 
-        {category && (
+        {/* {category && (
           <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide backdrop-blur-md border border-white/20 shadow-sm ${colorScheme.bg} ${colorScheme.text}`}>
             {CATEGORY_LABELS[category]}
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );

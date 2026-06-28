@@ -112,7 +112,7 @@ function StandingsContent() {
           setTournamentDate={setSelectedDate}
           tournamentId={selectedTournament}
           setTournamentId={setSelectedTournament}
-          tournaments={tournaments}
+          tournaments={tournaments.filter(t => !selectedDate || (t.start_date && t.start_date.startsWith(selectedDate)))}
         />
 
       {loading ? (

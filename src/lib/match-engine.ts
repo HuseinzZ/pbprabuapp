@@ -65,8 +65,7 @@ export function generateRRMatches(
           team1_id: groupTeams[i].id,
           team2_id: groupTeams[j].id,
           status: 'scheduled',
-          is_bye: false,
-          category: category || null
+          is_bye: false
         });
       }
     }

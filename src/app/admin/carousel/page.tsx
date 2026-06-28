@@ -8,6 +8,7 @@ import Loader from '@/components/shared/Loader';
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import Link from 'next/link';
 import { deleteStorageFile } from '@/lib/utils/supabaseStorage';
+import DeleteCarouselModal, { CarouselItemBase } from '@/components/carousel/DeleteCarouselModal';
 
 export type CarouselItem = {
   id: string;
@@ -22,6 +23,8 @@ export default function CarouselDashboard() {
   const supabase = createClient();
   const [items, setItems] = useState<CarouselItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<CarouselItemBase | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -46,20 +49,23 @@ export default function CarouselDashboard() {
     fetchCarousels();
   }, [fetchCarousels]);
 
-  const handleDelete = async (id: string, title: string, imageUrl: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus banner "${title}"?`)) return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
 
-    if (imageUrl && imageUrl.includes('/public/gallery/')) {
-      await deleteStorageFile(imageUrl, "gallery");
+    if (deleteTarget.image_url && deleteTarget.image_url.includes('/public/gallery/')) {
+      await deleteStorageFile(deleteTarget.image_url, "gallery");
     }
     
-    const { error } = await supabase.from('carousels').delete().eq('id', id);
+    const { error } = await supabase.from('carousels').delete().eq('id', deleteTarget.id);
     if (error) {
       toast.error(`Gagal menghapus banner: ${error.message}`);
     } else {
       toast.success('Banner berhasil dihapus.');
       fetchCarousels();
     }
+    setIsDeleting(false);
+    setDeleteTarget(null);
   };
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
@@ -171,7 +177,7 @@ export default function CarouselDashboard() {
                             <Edit className="w-3.5 h-3.5" />
                           </Link>
                           <button
-                            onClick={() => handleDelete(item.id, item.title, item.image_url)}
+                            onClick={() => setDeleteTarget({ id: item.id, title: item.title, image_url: item.image_url })}
                             title="Hapus banner"
                             className="p-1.5 border border-slate-200 dark:border-gray-700 hover:border-red-300 dark:hover:border-red-800 rounded hover:bg-slate-50 dark:hover:bg-gray-800 text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition duration-150 cursor-pointer"
                           >
@@ -230,6 +236,14 @@ export default function CarouselDashboard() {
           </div>
         )}
       </div>
+
+      <DeleteCarouselModal
+        isOpen={!!deleteTarget}
+        carousel={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

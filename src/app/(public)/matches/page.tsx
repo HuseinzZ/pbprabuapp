@@ -14,7 +14,7 @@ type MatchRaw = {
   team2_score: number;
   status: string;
   tournament_id: string | null;
-  tournaments: { id: string; name: string } | null;
+  tournaments: { id: string; name: string; start_date?: string } | null;
   team1?: {
     name?: string;
     p1?: { fullname: string } | null;
@@ -112,55 +112,45 @@ export default function PublicMatchesPage() {
   const [tournamentFilter, setTournamentFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState(""); // ISO date string YYYY-MM-DD
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
+  const [isInitialized, setIsInitialized] = useState(false);
+  const initRef = useRef(false);
   const supabase = createClient();
 
-  const initRef = useRef(false);
-
+  // Initialize with latest tournament
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
 
     async function fetchInitial() {
-      // Find the most recent match
-      const { data: latestData } = await supabase
-        .from("matches")
-        .select("created_at, tournament_id")
-        .order("created_at", { ascending: false })
+      const { data: latestTournaments } = await supabase
+        .from("tournaments")
+        .select("id, start_date")
+        .order("start_date", { ascending: false })
         .limit(1);
 
-      if (latestData && latestData.length > 0) {
-        const latestMatch = latestData[0];
-        const latestDate = latestMatch.created_at.slice(0, 10);
-        
-        // This will trigger the fetchByDate useEffect
-        setDateFilter(latestDate);
-        
-        // We also want to set the tournament filter to this match's tournament
-        // We do it with a slight delay so it applies after the data loads, or we just set it now.
-        // It's safe to set it now because the fetchByDate will see it and keep it if it exists.
-        setTournamentFilter(latestMatch.tournament_id || "all");
-      } else {
-        setLoading(false);
+      if (latestTournaments && latestTournaments.length > 0) {
+        const latestTournament = latestTournaments[0];
+        if (latestTournament.start_date) {
+           setDateFilter(latestTournament.start_date.slice(0, 10));
+        }
+        setTournamentFilter(latestTournament.id);
       }
+      setIsInitialized(true);
     }
     fetchInitial();
   }, [supabase]);
 
-  // When date filter changes, re-fetch with new date range
+  // Fetch matches whenever dateFilter changes (if empty, fetches latest overall)
   useEffect(() => {
-    if (!dateFilter) return;
-    async function fetchByDate() {
+    if (!isInitialized) return;
+    async function fetchMatches() {
       setLoading(true);
-      const from = new Date(dateFilter);
-      from.setHours(0, 0, 0, 0);
-      const to = new Date(dateFilter);
-      to.setHours(23, 59, 59, 999);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("matches")
         .select(`
           id, created_at, team1_score:score_team1, team2_score:score_team2, status, tournament_id,
-          tournaments(id, name),
+          tournaments!inner(id, name, start_date),
           team1:teams!team1_id(
             name,
             p1:profile!teams_player1_id_fkey(fullname),
@@ -172,10 +162,18 @@ export default function PublicMatchesPage() {
             p2:profile!teams_player2_id_fkey(fullname)
           )
         `)
-        .gte("created_at", from.toISOString())
-        .lte("created_at", to.toISOString())
         .order("created_at", { ascending: false })
         .limit(200);
+
+      if (dateFilter) {
+        const from = new Date(dateFilter);
+        from.setHours(0, 0, 0, 0);
+        const to = new Date(dateFilter);
+        to.setHours(23, 59, 59, 999);
+        query = query.gte("tournaments.start_date", from.toISOString()).lte("tournaments.start_date", to.toISOString());
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         toast.error("Gagal memuat pertandingan.");
@@ -200,7 +198,7 @@ export default function PublicMatchesPage() {
       
       setLoading(false);
     }
-    fetchByDate();
+    fetchMatches();
   }, [dateFilter, supabase]);
 
   const getTeamName = (team: any, defaultName: string) => {
@@ -230,7 +228,8 @@ export default function PublicMatchesPage() {
 
   // Group by date
   const grouped = filtered.reduce<Record<string, MatchRaw[]>>((acc, m) => {
-    const key = m.created_at ? m.created_at.slice(0, 10) : "Unknown";
+    const rawDate = m.tournaments?.start_date || m.created_at;
+    const key = rawDate ? rawDate.slice(0, 10) : "Unknown";
     if (!acc[key]) acc[key] = [];
     acc[key].push(m);
     return acc;

@@ -72,7 +72,7 @@ export default function PublicFooter() {
               <span className="text-gray-900 dark:text-white font-bold text-lg">PB Prabu Bandung</span>
             </div>
             <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed mb-6">
-              Portal resmi komunitas badminton PB Prabu Bandung – turnamen, ranking, jadwal, dan galeri.
+              Website resmi komunitas badminton PB Prabu Bandung.
             </p>
             <div className="flex items-center gap-3">
               {socialLinks.map((s) => (
