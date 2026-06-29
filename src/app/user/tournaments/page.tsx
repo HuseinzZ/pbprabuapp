@@ -1,10 +1,11 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { X, Info, Trophy, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react";
+import { X, Info, Trophy, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Share2, Check } from "lucide-react";
+import { toBlob } from "html-to-image";
 import SponsorSection from "@/components/users/SponsorSection";
 import Loader from "@/components/shared/Loader";
 
@@ -82,6 +83,9 @@ export default function TournamentsPage() {
   const [tournamentRankings, setTournamentRankings] = useState<any[]>([]);
   const [loadingModal, setLoadingModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
 
   const supabase = createClient();
   const router = useRouter();
@@ -195,6 +199,59 @@ export default function TournamentsPage() {
     setLoadingModal(false);
   };
 
+  const handleShareTournament = async () => {
+    if (!modalRef.current || !selectedTournament) return;
+    try {
+      setIsSharing(true);
+      const modal = modalRef.current;
+      const body = modal.querySelector('.overflow-y-auto') as HTMLDivElement;
+      
+      const originalMaxH = modal.style.maxHeight;
+      const originalOverflow = body ? body.style.overflow : '';
+      
+      modal.style.maxHeight = 'none';
+      if (body) body.style.overflow = 'visible';
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      
+      const blob = await toBlob(modal, {
+        cacheBust: true,
+        backgroundColor: document.documentElement.classList.contains("dark") ? "#111827" : "#ffffff",
+        style: { transform: "scale(1)", borderRadius: "16px" }
+      });
+
+      modal.style.maxHeight = originalMaxH;
+      if (body) body.style.overflow = originalOverflow;
+      
+      if (!blob) throw new Error("Failed to generate image");
+
+      const file = new File([blob], `turnamen-${selectedTournament.name.replace(/\s+/g, '-')}.png`, { type: "image/png" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `Turnamen ${selectedTournament.name}`,
+          text: `Lihat info & hasil turnamen ${selectedTournament.name} di PB Prabu Bandung!`,
+          files: [file],
+        });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Gambar berhasil diunduh (perangkat tidak mendukung share langsung)");
+      }
+      setShareSuccess(true);
+      setTimeout(() => setShareSuccess(false), 2000);
+    } catch (error) {
+      console.error(error);
+      toast.error("Gagal membagikan info turnamen");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   const filtered = activeFilter === "all"
     ? tournaments
     : tournaments.filter((t) => t.status === activeFilter);
@@ -214,7 +271,7 @@ export default function TournamentsPage() {
         onClick={() => setSelectedTournament(null)}
       />
       {/* Panel */}
-      <div className="relative w-full max-w-4xl max-h-[85vh] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      <div ref={modalRef} className="relative w-full max-w-4xl max-h-[85vh] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-start p-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           <div>
@@ -223,9 +280,20 @@ export default function TournamentsPage() {
               {selectedTournament.points?.name || "UMUM"}
             </span>
           </div>
-          <button onClick={() => setSelectedTournament(null)} className="ml-4 p-2 hover:bg-slate-100 dark:hover:bg-gray-800 rounded-full text-slate-500 dark:text-slate-400 transition-colors shrink-0">
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShareTournament}
+              disabled={isSharing || loadingModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 dark:bg-brand-900/30 dark:text-brand-400 dark:hover:bg-brand-900/50 transition-colors disabled:opacity-50"
+              title="Bagikan Info Turnamen"
+            >
+              {isSharing ? <Loader2 className="w-4 h-4 animate-spin" /> : shareSuccess ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+              <span className="hidden sm:inline">{shareSuccess ? "Berhasil" : "Bagikan"}</span>
+            </button>
+            <button onClick={() => setSelectedTournament(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-gray-800 rounded-full text-slate-500 dark:text-slate-400 transition-colors shrink-0">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Body */}

@@ -427,8 +427,8 @@ export default function PublicMatchesPage() {
                     {dayMatches.map((m) => {
                       const isDone = m.status === "completed";
                       const isOngoing = m.status === "ongoing";
-                      const timeStr = new Date(m.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-                      const dateStr = m.created_at.slice(0, 10);
+                      const rawDate = m.tournaments?.start_date || m.created_at;
+                      const dateStr = rawDate.slice(0, 10);
                       
                       return (
                         <article 
@@ -456,7 +456,7 @@ export default function PublicMatchesPage() {
                             </div>
                             <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-zinc-500 shrink-0">
                               <Calendar className="w-3 h-3" />
-                              <span>{dateStr} • {timeStr} WIB</span>
+                              <span>{dateStr}</span>
                             </div>
                           </div>
 

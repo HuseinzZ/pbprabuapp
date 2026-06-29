@@ -131,7 +131,7 @@ export default function PublicNavbar() {
                 <div className="flex items-center gap-2">
                   <Link
                     href="/auth/login"
-                    className="px-4 py-2 text-[13px] font-medium font-ui rounded-full transition-colors text-gray-900 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10"
+                    className="px-4 py-2 text-[13px] font-medium font-ui rounded-lg transition-colors text-gray-900 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10"
                   >
                     Masuk
                   </Link>
@@ -191,7 +191,7 @@ export default function PublicNavbar() {
                   <>
                     <Link
                       href="/auth/login"
-                      className="block text-center py-3 font-medium text-[15px] font-ui text-[var(--ink)] dark:text-white border border-[var(--hairline)] dark:border-white/20 rounded-full transition hover:bg-[var(--soft-cloud)] dark:hover:bg-white/5"
+                      className="block text-center py-3 font-medium text-[15px] font-ui text-[var(--ink)] dark:text-white border border-[var(--hairline)] dark:border-white/20 rounded-lg transition hover:bg-[var(--soft-cloud)] dark:hover:bg-white/5"
                     >
                       Masuk
                     </Link>

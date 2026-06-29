@@ -1,10 +1,11 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { X, Info, Trophy, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { X, Info, Trophy, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Share2, Check } from "lucide-react";
+import { toBlob } from "html-to-image";
 import SponsorSection from "@/components/users/SponsorSection";
 import Loader from "@/components/shared/Loader";
 
@@ -72,6 +73,9 @@ export default function TournamentsPage() {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<TournamentStatus>("all");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [myProfileId, setMyProfileId] = useState<string | null>(null);
+  const [registeredTournaments, setRegisteredTournaments] = useState<Record<string, string>>({});
+  const [registeringId, setRegisteringId] = useState<string | null>(null);
 
   // Modal State
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
@@ -79,6 +83,9 @@ export default function TournamentsPage() {
   const [tournamentRankings, setTournamentRankings] = useState<any[]>([]);
   const [loadingModal, setLoadingModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
 
   const supabase = createClient();
   const router = useRouter();
@@ -86,7 +93,33 @@ export default function TournamentsPage() {
   useEffect(() => {
     async function init() {
       const { data: { session } } = await supabase.auth.getSession();
-      setIsLoggedIn(!!session);
+      const loggedIn = !!session;
+      setIsLoggedIn(loggedIn);
+
+      // Ambil profile id user yang login
+      if (loggedIn && session?.user?.id) {
+        const { data: profileData } = await supabase
+          .from("profile")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .single();
+        if (profileData?.id) {
+          setMyProfileId(profileData.id);
+          // Ambil semua turnamen yang sudah didaftarkan user ini beserta statusnya
+          const { data: myParts } = await supabase
+            .from("tournament_participants")
+            .select("tournament_id, status")
+            .eq("profile_id", profileData.id);
+          if (myParts) {
+            const partsMap: Record<string, string> = {};
+            myParts.forEach((p: any) => {
+              if (p.tournament_id) partsMap[p.tournament_id] = p.status;
+            });
+            setRegisteredTournaments(partsMap);
+          }
+        }
+      }
+
       const { data, error } = await supabase
         .from("tournaments")
         .select("*, points(name), tournament_participants(id, status)")
@@ -98,9 +131,43 @@ export default function TournamentsPage() {
     init();
   }, []);
 
-  const handleRegister = () => {
-    if (isLoggedIn) router.push("/user/tournaments");
-    else router.push("/auth/login?redirect=/user/tournaments");
+  const handleRegisterTournament = async (tournamentId: string) => {
+    if (!isLoggedIn) {
+      router.push("/auth/login?redirect=/user/tournaments");
+      return;
+    }
+    setRegisteringId(tournamentId);
+    try {
+      const res = await fetch("/api/user/register-tournament", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tournament_id: tournamentId }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        if (res.status === 409) {
+          toast.info("Anda sudah terdaftar di turnamen ini.");
+          setRegisteredTournaments(prev => ({ ...prev, [tournamentId]: "pending" }));
+        } else {
+          toast.error(json.error || "Gagal mendaftar.");
+        }
+        setRegisteringId(null);
+        return;
+      }
+      toast.success("Pendaftaran berhasil! Status Anda: Menunggu Konfirmasi.");
+      setRegisteredTournaments(prev => ({ ...prev, [tournamentId]: "pending" }));
+      // Refresh participants di modal jika sedang terbuka
+      if (selectedTournament?.id === tournamentId) {
+        const { data: pData } = await supabase
+          .from("tournament_participants")
+          .select("id, status, profile_id, profile:profile_id(fullname, avatar_url)")
+          .eq("tournament_id", tournamentId);
+        setModalParticipants((pData || []).filter(p => p.status !== 'disqualified' && p.status !== 'withdrawn'));
+      }
+    } catch (err: any) {
+      toast.error("Terjadi kesalahan jaringan. Coba lagi.");
+    }
+    setRegisteringId(null);
   };
 
   const openTournamentModal = async (t: Tournament) => {
@@ -132,6 +199,59 @@ export default function TournamentsPage() {
     setLoadingModal(false);
   };
 
+  const handleShareTournament = async () => {
+    if (!modalRef.current || !selectedTournament) return;
+    try {
+      setIsSharing(true);
+      const modal = modalRef.current;
+      const body = modal.querySelector('.overflow-y-auto') as HTMLDivElement;
+      
+      const originalMaxH = modal.style.maxHeight;
+      const originalOverflow = body ? body.style.overflow : '';
+      
+      modal.style.maxHeight = 'none';
+      if (body) body.style.overflow = 'visible';
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      
+      const blob = await toBlob(modal, {
+        cacheBust: true,
+        backgroundColor: document.documentElement.classList.contains("dark") ? "#111827" : "#ffffff",
+        style: { transform: "scale(1)", borderRadius: "16px" }
+      });
+
+      modal.style.maxHeight = originalMaxH;
+      if (body) body.style.overflow = originalOverflow;
+      
+      if (!blob) throw new Error("Failed to generate image");
+
+      const file = new File([blob], `turnamen-${selectedTournament.name.replace(/\s+/g, '-')}.png`, { type: "image/png" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `Turnamen ${selectedTournament.name}`,
+          text: `Lihat info & hasil turnamen ${selectedTournament.name} di PB Prabu Bandung!`,
+          files: [file],
+        });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Gambar berhasil diunduh (perangkat tidak mendukung share langsung)");
+      }
+      setShareSuccess(true);
+      setTimeout(() => setShareSuccess(false), 2000);
+    } catch (error) {
+      console.error(error);
+      toast.error("Gagal membagikan info turnamen");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   const filtered = activeFilter === "all"
     ? tournaments
     : tournaments.filter((t) => t.status === activeFilter);
@@ -151,7 +271,7 @@ export default function TournamentsPage() {
         onClick={() => setSelectedTournament(null)}
       />
       {/* Panel */}
-      <div className="relative w-full max-w-4xl max-h-[85vh] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      <div ref={modalRef} className="relative w-full max-w-4xl max-h-[85vh] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-start p-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           <div>
@@ -160,9 +280,20 @@ export default function TournamentsPage() {
               {selectedTournament.points?.name || "UMUM"}
             </span>
           </div>
-          <button onClick={() => setSelectedTournament(null)} className="ml-4 p-2 hover:bg-slate-100 dark:hover:bg-gray-800 rounded-full text-slate-500 dark:text-slate-400 transition-colors shrink-0">
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShareTournament}
+              disabled={isSharing || loadingModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 dark:bg-brand-900/30 dark:text-brand-400 dark:hover:bg-brand-900/50 transition-colors disabled:opacity-50"
+              title="Bagikan Info Turnamen"
+            >
+              {isSharing ? <Loader2 className="w-4 h-4 animate-spin" /> : shareSuccess ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+              <span className="hidden sm:inline">{shareSuccess ? "Berhasil" : "Bagikan"}</span>
+            </button>
+            <button onClick={() => setSelectedTournament(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-gray-800 rounded-full text-slate-500 dark:text-slate-400 transition-colors shrink-0">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
@@ -262,7 +393,7 @@ export default function TournamentsPage() {
                             <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest w-12">#</th>
                             <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pemain</th>
                             <th className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Posisi</th>
-                            <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Poin</th>
+                            <th className="text-right px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden sm:table-cell">Poin</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -283,9 +414,9 @@ export default function TournamentsPage() {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span className="px-2 py-0.5 bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded text-xs font-bold">{label}</span>
+                                  <span className="px-2 py-0.5 bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded text-xs font-bold whitespace-nowrap">{label}</span>
                                 </td>
-                                <td className="px-4 py-3 text-right font-bold text-brand-500 tabular-nums">{r.points_earned} pts</td>
+                                <td className="px-4 py-3 text-right font-bold text-brand-500 tabular-nums hidden sm:table-cell">{r.points_earned} pts</td>
                               </tr>
                             );
                           })}
@@ -302,10 +433,38 @@ export default function TournamentsPage() {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-end shrink-0">
-          <button onClick={() => setSelectedTournament(null)} className="px-6 py-2.5 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-white text-sm font-bold hover:bg-slate-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 transition-colors">
+        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col sm:flex-row justify-center sm:justify-between items-center shrink-0 gap-3">
+          <button onClick={() => setSelectedTournament(null)} className="px-6 py-2.5 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-white text-sm font-bold hover:bg-slate-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 transition-colors w-full sm:w-auto">
             Tutup
           </button>
+          {selectedTournament && (selectedTournament.status === "upcoming" || selectedTournament.status === "registration") && (
+            registeredTournaments[selectedTournament.id] ? (
+              registeredTournaments[selectedTournament.id] === "confirmed" ? (
+                <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-sm font-bold">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  Terkonfirmasi
+                </span>
+              ) : registeredTournaments[selectedTournament.id] === "withdrawn" || registeredTournaments[selectedTournament.id] === "disqualified" ? (
+                <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-sm font-bold">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  {registeredTournaments[selectedTournament.id] === "withdrawn" ? "Dibatalkan" : "Didiskualifikasi"}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 text-yellow-700 dark:text-yellow-400 text-sm font-bold">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  Menunggu Konfirmasi
+                </span>
+              )
+            ) : (
+              <button
+                onClick={() => handleRegisterTournament(selectedTournament.id)}
+                disabled={registeringId === selectedTournament.id}
+                className="px-6 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white text-sm font-bold transition-colors shadow-sm w-full sm:w-auto"
+              >
+                {registeringId === selectedTournament.id ? "Mendaftar..." : "Daftar Sekarang"}
+              </button>
+            )
+          )}
         </div>
       </div>
     </div>
@@ -325,12 +484,15 @@ export default function TournamentsPage() {
         </div>
 
         {/* Filter chips */}
-        <div className="flex items-center gap-2 flex-wrap mb-8">
+        <div className="flex items-center gap-2 overflow-x-auto mb-8 pb-2 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide snap-x" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <style dangerouslySetInnerHTML={{__html: `
+            .scrollbar-hide::-webkit-scrollbar { display: none; }
+          `}} />
           {FILTERS.map((f) => (
             <button
               key={f.key}
               onClick={() => setActiveFilter(f.key)}
-              className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-colors duration-200 ${
+              className={`shrink-0 whitespace-nowrap px-6 py-2.5 rounded-full text-sm font-semibold transition-colors duration-200 snap-start ${
                 activeFilter === f.key
                   ? "bg-zinc-950 text-white dark:bg-white dark:text-slate-900 shadow-md"
                   : "bg-white text-slate-700 dark:bg-gray-800/40 dark:text-gray-400 hover:bg-slate-50 hover:text-slate-900 dark:hover:text-white shadow-sm border border-slate-200 dark:border-gray-800"
@@ -446,9 +608,45 @@ export default function TournamentsPage() {
                         SEDANG BERLANGSUNG
                       </button>
                     ) : (t.status === "upcoming" || t.status === "registration") ? (
-                      <button onClick={handleRegister} className="flex-1 py-3 px-4 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold uppercase tracking-widest text-center transition-colors shadow-sm">
-                        DAFTAR SEKARANG
-                      </button>
+                      registeredTournaments[t.id] ? (
+                        registeredTournaments[t.id] === "confirmed" ? (
+                          <button disabled className="flex-1 py-3 px-4 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest text-center flex justify-center items-center gap-2">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            TERKONFIRMASI
+                          </button>
+                        ) : registeredTournaments[t.id] === "withdrawn" || registeredTournaments[t.id] === "disqualified" ? (
+                          <button disabled className="flex-1 py-3 px-4 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-widest text-center flex justify-center items-center gap-2">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            {registeredTournaments[t.id] === "withdrawn" ? "DIBATALKAN" : "DIDISKUALIFIKASI"}
+                          </button>
+                        ) : (
+                          <button disabled className="flex-1 py-3 px-4 rounded-lg bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/30 text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase tracking-widest text-center flex justify-center items-center gap-2">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            MENUNGGU KONFIRMASI
+                          </button>
+                        )
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRegisterTournament(t.id);
+                          }}
+                          disabled={registeringId === t.id}
+                          className="flex-1 py-3 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-widest transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
+                        >
+                          {registeringId === t.id ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Mendaftar...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                              DAFTAR SEKARANG
+                            </>
+                          )}
+                        </button>
+                      )
                     ) : null}
                   </div>
                 </article>

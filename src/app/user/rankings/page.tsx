@@ -1,10 +1,11 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "react-toastify";
 import Image from "next/image";
-import { Info, BarChart3, Trophy, X, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown } from "lucide-react";
+import { Info, BarChart3, Trophy, X, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, Share2, Check, Loader2 } from "lucide-react";
+import { toBlob } from "html-to-image";
 import SponsorSection from "@/components/users/SponsorSection";
 import Loader from "@/components/shared/Loader";
 
@@ -165,6 +166,9 @@ function Avatar({ player, size = "md" }: { player: Player; size?: "sm" | "md" | 
 }
 
 export default function RankingsPage() {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const [pointHistories, setPointHistories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -304,11 +308,13 @@ export default function RankingsPage() {
     fetchRankings();
   }, [supabase]);
 
-  const openBreakdown = async (player: Player, rankIndex: number) => {
+  // Fetch single player's matches when modal opens
+  const openBreakdown = async (player: Player, rank: number) => {
     setSelectedPlayer(player);
-    setSelectedPlayerRank(rankIndex);
+    setSelectedPlayerRank(rank);
     setLoadingMatches(true);
     setPlayerMatches([]);
+    setShareSuccess(false);
     setPlayerTeamIds([]);
 
     try {
@@ -443,6 +449,65 @@ export default function RankingsPage() {
     return currentPlayers;
   };
 
+  const handleShareStats = async () => {
+    if (!modalRef.current || !selectedPlayer) return;
+    try {
+      setIsSharing(true);
+      const modal = modalRef.current;
+      const body = modal.querySelector('.custom-scrollbar') as HTMLDivElement;
+      
+      // Temporarily remove constraints to capture full height
+      const originalMaxH = modal.style.maxHeight;
+      const originalOverflow = body ? body.style.overflow : '';
+      
+      modal.style.maxHeight = 'none';
+      if (body) body.style.overflow = 'visible';
+
+      // Wait for any animations and DOM updates
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      
+      const blob = await toBlob(modal, {
+        cacheBust: true,
+        backgroundColor: document.documentElement.classList.contains("dark") ? "#111827" : "#ffffff",
+        style: { transform: "scale(1)", borderRadius: "24px" } // Use px for borderRadius when capturing
+      });
+
+      // Restore constraints
+      modal.style.maxHeight = originalMaxH;
+      if (body) body.style.overflow = originalOverflow;
+      
+      if (!blob) throw new Error("Failed to generate image");
+
+      const file = new File([blob], `statistik-${selectedPlayer.fullname.replace(/\s+/g, '-')}.png`, { type: "image/png" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `Statistik ${selectedPlayer.fullname}`,
+          text: `Lihat statistik ${selectedPlayer.fullname} di PB Prabu Bandung!`,
+          files: [file],
+        });
+      } else {
+        // Fallback download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Gambar berhasil diunduh (perangkat tidak mendukung share langsung)");
+      }
+      setShareSuccess(true);
+      setTimeout(() => setShareSuccess(false), 2000);
+    } catch (error) {
+      console.error(error);
+      toast.error("Gagal membagikan statistik");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+
+
   // Client-side Filtering & Pagination
   const dynamicallyCalculatedPlayers = getDynamicPlayers();
   const filteredPlayers = dynamicallyCalculatedPlayers.filter(p => 
@@ -457,6 +522,8 @@ export default function RankingsPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, pageSize, timeFilter, levelFilter]);
+
+  if (!mounted) return null;
 
   return (
     <>
@@ -716,7 +783,7 @@ export default function RankingsPage() {
       {/* ─── STATISTICS MODAL ─────────────────────────────────────── */}
       {selectedPlayer && mounted && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+          <div ref={modalRef} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             {/* Modal Header */}
             <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md z-10">
               <div className="flex items-center gap-3">
@@ -729,12 +796,23 @@ export default function RankingsPage() {
                   {selectedPlayer.fullname}
                 </h3>
               </div>
-              <button 
-                onClick={() => setSelectedPlayer(null)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full text-slate-400 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleShareStats}
+                  disabled={isSharing || loadingMatches}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-brand-50 text-brand-600 hover:bg-brand-100 dark:bg-brand-900/30 dark:text-brand-400 dark:hover:bg-brand-900/50 transition-colors disabled:opacity-50"
+                  title="Bagikan Statistik (Screenshot)"
+                >
+                  {isSharing ? <Loader2 className="w-4 h-4 animate-spin" /> : shareSuccess ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                  <span className="hidden sm:inline">{shareSuccess ? "Berhasil" : "Bagikan"}</span>
+                </button>
+                <button 
+                  onClick={() => setSelectedPlayer(null)}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full text-slate-400 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}
@@ -773,17 +851,21 @@ export default function RankingsPage() {
                       </div>
                     </div>
 
-                    {/* W / L / Total Summary Cards */}
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                      <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-2xl p-3 sm:p-4 text-center">
+                    {/* W / L / Total / Poin Summary Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                      <div className="flex flex-col items-center justify-center bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-3 sm:p-4 text-center">
+                        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-1">Poin</p>
+                        <p className="text-lg sm:text-xl font-black text-amber-700 dark:text-amber-300">{selectedPlayer.ranking_points?.toLocaleString() || 0}</p>
+                      </div>
+                      <div className="flex flex-col items-center justify-center bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-2xl p-3 sm:p-4 text-center">
                         <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">Menang</p>
                         <p className="text-2xl sm:text-3xl font-black text-emerald-700 dark:text-emerald-300">{wins}</p>
                       </div>
-                      <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800/50 rounded-2xl p-3 sm:p-4 text-center">
+                      <div className="flex flex-col items-center justify-center bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800/50 rounded-2xl p-3 sm:p-4 text-center">
                         <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-rose-600 dark:text-rose-400 mb-1">Kalah</p>
                         <p className="text-2xl sm:text-3xl font-black text-rose-700 dark:text-rose-300">{losses}</p>
                       </div>
-                      <div className="bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl p-3 sm:p-4 text-center">
+                      <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl p-3 sm:p-4 text-center">
                         <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-zinc-400 mb-1">Total</p>
                         <p className="text-2xl sm:text-3xl font-black text-slate-700 dark:text-zinc-200">{totalMatches}</p>
                       </div>
@@ -842,13 +924,13 @@ export default function RankingsPage() {
                                     <span className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 truncate" title={partnerName}>{partnerName}</span>
                                   </div>
                                   <div className="shrink-0 text-center px-2">
-                                    <span className="text-sm font-extrabold text-slate-700 dark:text-zinc-200 tabular-nums bg-white dark:bg-zinc-800/50 px-2 py-1 rounded shadow-sm border border-slate-100 dark:border-zinc-700">
-                                      {myScore} <span className="text-slate-400 mx-0.5">–</span> {oppScore}
+                                    <span className="inline-flex items-center justify-center whitespace-nowrap text-sm font-extrabold text-slate-700 dark:text-zinc-200 tabular-nums bg-white dark:bg-zinc-800/50 px-2 py-1 rounded shadow-sm border border-slate-100 dark:border-zinc-700">
+                                      {myScore} <span className="text-slate-400 mx-1">–</span> {oppScore}
                                     </span>
                                   </div>
                                   <div className="flex-1 min-w-0 text-right">
                                     <span className="block text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500 mb-0.5">Lawan</span>
-                                    <span className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 truncate" title={oppTeamName}>{oppTeamName || "-"}</span>
+                                    <span className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 truncate" title={oppTeamName ? oppTeamName.replace(/\s*\/\s*/g, ' & ') : undefined}>{oppTeamName ? oppTeamName.replace(/\s*\/\s*/g, ' & ') : "-"}</span>
                                   </div>
                                 </div>
                               </div>
