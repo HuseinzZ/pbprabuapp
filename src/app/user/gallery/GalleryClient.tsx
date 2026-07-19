@@ -308,12 +308,14 @@ function Lightbox({ items, initialIndex, onClose }: LightboxProps) {
 // ─── PublicGalleryClient ───────────────────────────────────────────────────────────────
 
 type FilterType = "all" | GalleryCategory;
+const INITIAL_LIMIT = 6;
 
 export default function PublicGalleryClient() {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [displayLimit, setDisplayLimit] = useState(INITIAL_LIMIT);
 
   const supabase = createClient();
 
@@ -376,7 +378,10 @@ export default function PublicGalleryClient() {
               return (
                 <button
                   key={f}
-                  onClick={() => setActiveFilter(f)}
+                  onClick={() => {
+                    setActiveFilter(f);
+                    setDisplayLimit(INITIAL_LIMIT);
+                  }}
                   className={`shrink-0 whitespace-nowrap px-6 py-2.5 rounded-full text-sm font-semibold transition-colors duration-200 snap-start ${
                     activeFilter === f
                       ? "bg-zinc-950 text-white dark:bg-white dark:text-slate-900 shadow-md"
@@ -408,14 +413,26 @@ export default function PublicGalleryClient() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filtered.map((item, index) => (
-                  <GalleryCard
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filtered.slice(0, displayLimit).map((item, index) => (
+                    <GalleryCard
                     key={item.id}
                     item={item}
                     onView={() => setLightboxIndex(index)}
                   />
-                ))}
+                  ))}
+                </div>
+                {displayLimit < filtered.length && (
+                  <div className="flex justify-center pt-4">
+                    <button
+                      onClick={() => setDisplayLimit((prev) => prev + 6)}
+                      className="px-8 py-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-brand-600 dark:text-brand-400 font-semibold text-sm hover:bg-brand-50 dark:hover:bg-brand-500/10 hover:border-brand-200 dark:hover:border-brand-500/30 transition-all shadow-sm"
+                    >
+                      Muat Lebih Banyak
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

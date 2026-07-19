@@ -80,11 +80,9 @@ export default function SignInForm() {
         .select('role')
         .eq('user_id', user.id)
         .single();
-      showNotif('success', 'Berhasil masuk...');
-      setTimeout(() => {
-        router.push(profileData?.role === 'admin' ? '/admin' : '/');
-        router.refresh();
-      }, 1000);
+      router.push(profileData?.role === 'admin' ? '/admin' : '/');
+      router.refresh();
+      return; // Biarkan loading berjalan sampai halaman beralih
     }
     setLoading(false);
   }

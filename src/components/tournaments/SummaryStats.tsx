@@ -23,12 +23,12 @@ export default function SummaryStats({ tournaments }: SummaryStatsProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {/* KPI 1 */}
       <div 
-        className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 hover:border-emerald-300 dark:hover:border-emerald-700 shadow-sm transition-all duration-250 flex items-center gap-4 group cursor-default"
+        className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm flex items-center gap-4 cursor-default"
       >
-        <div className="p-3 bg-slate-100 dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 rounded-lg group-hover:bg-emerald-600 group-hover:text-white dark:group-hover:bg-emerald-500 transition-all duration-250">
+        <div className="p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg">
           <Trophy className="w-5 h-5" />
         </div>
         <div>
@@ -42,9 +42,9 @@ export default function SummaryStats({ tournaments }: SummaryStatsProps) {
 
       {/* KPI 2 */}
       <div 
-        className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 hover:border-amber-300 dark:hover:border-amber-700 shadow-sm transition-all duration-250 flex items-center gap-4 group cursor-default"
+        className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm flex items-center gap-4 cursor-default"
       >
-        <div className="p-3 bg-slate-100 dark:bg-gray-800 text-amber-600 dark:text-amber-400 rounded-lg group-hover:bg-amber-600 group-hover:text-white dark:group-hover:bg-amber-500 transition-all duration-250">
+        <div className="p-3 bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg">
           <Medal className="w-5 h-5" />
         </div>
         <div className="min-w-0">
@@ -55,9 +55,9 @@ export default function SummaryStats({ tournaments }: SummaryStatsProps) {
 
       {/* KPI 3 */}
       <div 
-        className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 shadow-sm transition-all duration-250 flex items-center gap-4 group cursor-default"
+        className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm flex items-center gap-4 cursor-default"
       >
-        <div className="p-3 bg-slate-100 dark:bg-gray-800 text-blue-600 dark:text-blue-400 rounded-lg group-hover:bg-blue-600 group-hover:text-white dark:group-hover:bg-blue-500 transition-all duration-250">
+        <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg">
           <CheckCircle2 className="w-5 h-5" />
         </div>
         <div>
@@ -68,9 +68,9 @@ export default function SummaryStats({ tournaments }: SummaryStatsProps) {
 
       {/* KPI 4 */}
       <div 
-        className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 hover:border-purple-300 dark:hover:border-purple-700 shadow-sm transition-all duration-250 flex items-center gap-4 group cursor-default"
+        className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm flex items-center gap-4 cursor-default"
       >
-        <div className="p-3 bg-slate-100 dark:bg-gray-800 text-purple-600 dark:text-purple-400 rounded-lg group-hover:bg-purple-600 group-hover:text-white dark:group-hover:bg-purple-500 transition-all duration-250">
+        <div className="p-3 bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg">
           <CalendarClock className="w-5 h-5" />
         </div>
         <div>

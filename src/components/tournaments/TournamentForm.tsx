@@ -15,7 +15,6 @@ import Loader from "@/components/shared/Loader";
 import Label from "@/components/form/Label";
 
 import DatePicker from "@/components/form/DatePicker";
-import LocationPicker from "@/components/tournaments/LocationPicker";
 import {
   Trophy,
   MapPin,
@@ -452,11 +451,18 @@ export default function TournamentForm({ tournamentId }: TournamentFormProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Lokasi */}
             <div className="md:col-span-2">
-              <Label htmlFor="location">Lokasi</Label>
-              <LocationPicker
+              <Label htmlFor="location">Koordinat Peta (Google Maps)</Label>
+              <input
+                id="location"
+                type="text"
                 value={form.location}
-                onChange={(val) => setField("location", val)}
+                onChange={(e) => setField("location", e.target.value)}
+                placeholder="Contoh: -6.8977617, 107.5842884"
+                className={FIELD_CLASS}
               />
+              <p className="mt-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+                Cara mendapat koordinat: Buka Google Maps, cari lokasi, klik kanan pada titik peta, lalu klik angka koordinat paling atas untuk meng-copy. Paste ke kolom di atas.
+              </p>
             </div>
 
             {/* Tanggal Mulai */}

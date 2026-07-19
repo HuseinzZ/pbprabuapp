@@ -198,8 +198,6 @@ export default function UserForm({ playerId }: UserFormProps) {
     if (form.password) {
       if (pwdStrength.score < 2) newErrors.password = "Password terlalu lemah. Minimal tingkat \"Sedang\".";
       if (form.password !== form.confirmPassword) newErrors.confirmPassword = "Konfirmasi password tidak cocok.";
-    } else if (!isEdit) {
-      // password opsional saat tambah baru, jadi tidak wajib
     }
 
     setErrors(newErrors);
@@ -376,7 +374,7 @@ export default function UserForm({ playerId }: UserFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
           {/* Nama Lengkap */}
-          <div className="col-span-1 md:col-span-2">
+          <div>
             <label htmlFor="fullname" className="block text-[10px] font-bold tracking-wider uppercase text-gray-500 dark:text-gray-400 mb-1.5">
               Nama Lengkap <span className="text-red-500">*</span>
             </label>
@@ -560,9 +558,9 @@ export default function UserForm({ playerId }: UserFormProps) {
             <span className="block text-[10px] font-bold tracking-wider uppercase text-gray-500 dark:text-gray-400 mb-1.5">
               Status Akun
             </span>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 h-[42px]">
               <button type="button" onClick={() => setField("is_active", true)}
-                className={`py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all flex items-center justify-center gap-2 ${
+                className={`h-full px-2 rounded-xl text-[11px] font-bold uppercase tracking-wider border transition-all flex items-center justify-center gap-1.5 ${
                   form.is_active
                     ? "bg-emerald-50 border-emerald-300 text-emerald-800 ring-2 ring-emerald-500/20 dark:bg-emerald-500/10 dark:border-emerald-700 dark:text-emerald-300"
                     : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
@@ -571,7 +569,7 @@ export default function UserForm({ playerId }: UserFormProps) {
                 Aktif
               </button>
               <button type="button" onClick={() => setField("is_active", false)}
-                className={`py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all flex items-center justify-center gap-2 ${
+                className={`h-full px-2 rounded-xl text-[11px] font-bold uppercase tracking-wider border transition-all flex items-center justify-center gap-1.5 ${
                   !form.is_active
                     ? "bg-red-50 border-red-300 text-red-800 ring-2 ring-red-500/20 dark:bg-red-500/10 dark:border-red-700 dark:text-red-300"
                     : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
@@ -587,7 +585,7 @@ export default function UserForm({ playerId }: UserFormProps) {
             <label htmlFor="address" className="block text-[10px] font-bold tracking-wider uppercase text-gray-500 dark:text-gray-400 mb-1.5">
               Alamat
             </label>
-            <textarea id="address" rows={3} value={form.address}
+            <textarea id="address" rows={4} value={form.address}
               onChange={(e) => setField("address", e.target.value)}
               placeholder="Alamat lengkap"
               className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500 outline-none transition-all resize-none" />

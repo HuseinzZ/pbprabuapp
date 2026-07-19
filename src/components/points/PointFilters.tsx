@@ -93,13 +93,13 @@ export default function PointFilters({
           </select>
         </div>
 
-        <div className="col-span-2 md:col-span-2 lg:col-span-4 flex items-end justify-end gap-2">
+        <div className="col-span-2 md:col-span-2 lg:col-span-4 flex items-end gap-2">
           <Link
             href="/admin/points/add"
             className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all duration-150 cursor-pointer w-full sm:w-auto"
           >
             <Plus className="w-4 h-4" />
-            Tambah
+            Tambah Tipe Poin
           </Link>
         </div>
       </div>

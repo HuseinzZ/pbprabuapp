@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { X, Info, Trophy, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Share2, Check } from "lucide-react";
+import { X, Info, Trophy, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Share2, Check, MapPin } from "lucide-react";
 import { toBlob } from "html-to-image";
 import SponsorSection from "@/components/users/SponsorSection";
 import Loader from "@/components/shared/Loader";
@@ -67,6 +67,7 @@ function formatRupiah(n: number) {
 }
 
 const PAGE_SIZE = 10;
+const INITIAL_LIMIT = 4;
 
 export default function TournamentsPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -83,6 +84,7 @@ export default function TournamentsPage() {
   const [tournamentRankings, setTournamentRankings] = useState<any[]>([]);
   const [loadingModal, setLoadingModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [displayLimit, setDisplayLimit] = useState(INITIAL_LIMIT);
   const modalRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
@@ -328,6 +330,24 @@ export default function TournamentsPage() {
                     {[selectedTournament.match_format, selectedTournament.gender_category].filter(Boolean).join(" - ") || "Sistem Gugur"}
                   </div>
                 </div>
+                {selectedTournament.location && (
+                  <div className="col-span-2 md:col-span-4 border-t border-gray-100 dark:border-gray-800 pt-3 mt-1">
+                    <div className="text-[10px] text-slate-400 dark:text-gray-500 font-mono font-bold uppercase tracking-widest mb-2 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" /> LOKASI
+                    </div>
+                    <div className="w-full rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 h-64 bg-slate-100 dark:bg-gray-800">
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        frameBorder="0"
+                        style={{ border: 0 }}
+                        src={`https://maps.google.com/maps?q=${selectedTournament.location}&hl=id&z=17&output=embed`}
+                        allowFullScreen
+                        loading="lazy"
+                      ></iframe>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Rules */}
@@ -491,7 +511,10 @@ export default function TournamentsPage() {
           {FILTERS.map((f) => (
             <button
               key={f.key}
-              onClick={() => setActiveFilter(f.key)}
+              onClick={() => {
+                setActiveFilter(f.key);
+                setDisplayLimit(INITIAL_LIMIT);
+              }}
               className={`shrink-0 whitespace-nowrap px-6 py-2.5 rounded-full text-sm font-semibold transition-colors duration-200 snap-start ${
                 activeFilter === f.key
                   ? "bg-zinc-950 text-white dark:bg-white dark:text-slate-900 shadow-md"
@@ -523,9 +546,10 @@ export default function TournamentsPage() {
             Tidak ada turnamen {activeFilter !== "all" ? `dengan status "${STATUS_LABEL[activeFilter]}"` : ""}.
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filtered.map((t) => {
-              const activeParticipants = t.tournament_participants ? t.tournament_participants.filter(p => p.status !== "disqualified" && p.status !== "withdrawn") : [];
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {filtered.slice(0, displayLimit).map((t) => {
+                const activeParticipants = t.tournament_participants ? t.tournament_participants.filter(p => p.status !== "disqualified" && p.status !== "withdrawn") : [];
               const registeredCount = activeParticipants.length;
               const max = t.max_participants || 0;
               const remaining = max > 0 ? Math.max(0, max - registeredCount) : 0;
@@ -574,6 +598,24 @@ export default function TournamentsPage() {
                           {new Date(t.start_date).toISOString().split("T")[0]}
                         </div>
                       </div>
+                      {t.location && (
+                        <div className="col-span-2 border-t border-gray-100 dark:border-gray-800 pt-4">
+                          <div className="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-brand-500" /> LOKASI
+                          </div>
+                          <div className="text-sm font-medium text-slate-900 dark:text-white">
+                            <a 
+                              href={`https://www.google.com/maps/search/?api=1&query=${t.location}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-brand-500 hover:underline transition-colors text-sm font-medium flex items-center gap-1"
+                              title="Buka di Google Maps"
+                            >
+                              Buka di Google Maps
+                            </a>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mb-4">
@@ -652,6 +694,17 @@ export default function TournamentsPage() {
                 </article>
               );
             })}
+            </div>
+            {displayLimit < filtered.length && (
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={() => setDisplayLimit((prev) => prev + 4)}
+                  className="px-8 py-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-brand-600 dark:text-brand-400 font-semibold text-sm hover:bg-brand-50 dark:hover:bg-brand-500/10 hover:border-brand-200 dark:hover:border-brand-500/30 transition-all shadow-sm"
+                >
+                  Muat Lebih Banyak
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

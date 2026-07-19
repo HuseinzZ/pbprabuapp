@@ -21,7 +21,7 @@ export default function AutoLogout() {
       alert("Sesi Anda telah berakhir karena tidak ada aktivitas selama 30 menit. Silakan login kembali.");
       
       // Redirect ke halaman login
-      router.push("/auth/login");
+      router.push("/");
     };
 
     const resetTimer = () => {

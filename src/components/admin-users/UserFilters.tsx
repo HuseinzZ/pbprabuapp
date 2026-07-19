@@ -138,8 +138,8 @@ export default function UserFilters({
           </select>
         </div>
 
-        <div className="col-span-2 md:col-span-4 lg:col-span-2 flex items-end justify-end gap-2">
-           {onSyncPoints && (
+        <div className="col-span-2 md:col-span-4 lg:col-span-2 flex items-end gap-2">
+          {onSyncPoints && (
             <button
               onClick={onSyncPoints}
               disabled={syncing}

@@ -57,20 +57,12 @@ export default function AddMatchModal({ isOpen, onClose, onSaved }: AddMatchModa
     }
   }, [isOpen]);
 
-  const getCategoryFromTournament = (t: Tournament) => {
-    if (t.match_format && t.gender_category) {
-      return `${t.match_format}_${t.gender_category}`;
-    }
-    return "";
-  };
+
 
   useEffect(() => {
     if (formData.tournament_id) {
       fetchTeams(formData.tournament_id);
       const t = tournaments.find(t => t.id === formData.tournament_id);
-      if (t) {
-        setFormData(prev => ({ ...prev, category: getCategoryFromTournament(t) }));
-      }
     } else {
       setTeams([]);
       setFormData(prev => ({ ...prev, matchPairs: [{ team1_id: "", team2_id: "" }] }));
@@ -151,7 +143,6 @@ export default function AddMatchModal({ isOpen, onClose, onSaved }: AddMatchModa
       tournament_id: formData.tournament_id,
       phase: formData.phase,
       group_name: formData.phase === "RR" ? formData.group_name.toUpperCase() : null,
-      category: formData.category || null,
       team1_id: pair.team1_id,
       team2_id: pair.team2_id,
       match_number: nextMatchNumber++,
@@ -305,43 +296,7 @@ export default function AddMatchModal({ isOpen, onClose, onSaved }: AddMatchModa
             </div>
           </div>
 
-          {/* Kategori Pertandingan */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Kategori Pertandingan
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, category: "" })}
-                className={`px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
-                  formData.category === ""
-                    ? "border-gray-400 dark:border-gray-500 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white"
-                    : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-300"
-                }`}
-              >
-                Umum
-              </button>
-              {CATEGORY_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, category: opt.value })}
-                  className={`px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
-                    formData.category === opt.value
-                      ? opt.value.includes("putra") && !opt.value.includes("campuran")
-                        ? "border-blue-400 bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300"
-                        : opt.value === "ganda_campuran"
-                        ? "border-violet-400 bg-violet-50 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300"
-                        : "border-pink-400 bg-pink-50 dark:bg-pink-500/20 text-pink-700 dark:text-pink-300"
-                      : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-300"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
+
 
 
           {formData.tournament_id && teams.length === 0 ? (

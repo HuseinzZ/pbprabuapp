@@ -117,7 +117,7 @@ function PointContent() {
   const handleToggleStatus = async (item: Point) => {
     const newStatus = !item.is_active;
     setItems((prev) => prev.map((u) => u.id === item.id ? { ...u, is_active: newStatus } : u));
-    
+
     const { error } = await supabase.from("points").update({ is_active: newStatus }).eq("id", item.id);
     if (error) {
       setItems((prev) => prev.map((u) => u.id === item.id ? { ...u, is_active: !newStatus } : u));
@@ -180,7 +180,7 @@ function PointContent() {
 
       {/* Dashboard Grid System */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        
+
         {/* Main List Section (Wide Column) */}
         <section className="lg:col-span-3 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl shadow-sm flex flex-col">
           <PointFilters
@@ -218,18 +218,8 @@ function PointContent() {
             <p className="text-xs text-slate-500 dark:text-gray-400 leading-relaxed">
               Pengaturan tipe turnamen dan distribusi poin dikontrol di halaman ini. Pastikan konfigurasi distribusi poin sesuai dengan regulasi sebelum turnamen dimulai.
             </p>
-            <div className="pt-3 border-t border-slate-100 dark:border-gray-800 text-[11px] font-semibold text-slate-400 dark:text-gray-500 space-y-2.5">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Validasi Data Aktif</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Level Akses Terproteksi (Admin)</span>
-              </div>
-            </div>
           </div>
-          
+
           <ActivityLogs logs={logs} onClear={handleClearLogs} />
         </section>
 

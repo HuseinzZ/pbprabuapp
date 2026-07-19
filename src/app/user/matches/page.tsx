@@ -88,11 +88,10 @@ const CustomSelect = ({
                 key={opt.value}
                 type="button"
                 onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                className={`w-full text-left px-3 py-2.5 text-[11px] sm:text-xs rounded-lg transition-colors ${
-                  value === opt.value
+                className={`w-full text-left px-3 py-2.5 text-[11px] sm:text-xs rounded-lg transition-colors ${value === opt.value
                     ? "bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 font-bold"
                     : "text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-700/50"
-                }`}
+                  }`}
               >
                 {opt.label}
               </button>
@@ -131,7 +130,7 @@ export default function PublicMatchesPage() {
       if (latestTournaments && latestTournaments.length > 0) {
         const latestTournament = latestTournaments[0];
         if (latestTournament.start_date) {
-           setDateFilter(latestTournament.start_date.slice(0, 10));
+          setDateFilter(latestTournament.start_date.slice(0, 10));
         }
         setTournamentFilter(latestTournament.id);
       }
@@ -190,16 +189,16 @@ export default function PublicMatchesPage() {
         }
       });
       setTournaments(Array.from(seen.entries()).map(([id, name]) => ({ id, name })));
-      
+
       setTournamentFilter((prev) => {
         if (prev !== "all" && !seen.has(prev)) return "all";
         return prev;
       });
-      
+
       setLoading(false);
     }
     fetchMatches();
-  }, [dateFilter, supabase]);
+  }, [dateFilter, supabase, isInitialized]);
 
   const getTeamName = (team: any, defaultName: string) => {
     if (!team) return defaultName;
@@ -266,11 +265,10 @@ export default function PublicMatchesPage() {
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className={`px-8 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                  viewMode === mode
+                className={`px-8 py-2.5 rounded-lg text-sm font-bold transition-all ${viewMode === mode
                     ? "bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm"
                     : "text-slate-500 hover:text-slate-700 dark:hover:text-zinc-300"
-                }`}
+                  }`}
               >
                 {mode === "table" ? "Tabel" : "Kartu"}
               </button>
@@ -429,25 +427,24 @@ export default function PublicMatchesPage() {
                       const isOngoing = m.status === "ongoing";
                       const rawDate = m.tournaments?.start_date || m.created_at;
                       const dateStr = rawDate.slice(0, 10);
-                      
+
                       return (
-                        <article 
-                          key={m.id} 
+                        <article
+                          key={m.id}
                           className="relative flex flex-col justify-center bg-white dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm transition-all overflow-hidden group"
                         >
                           {/* Dotted Background Pattern for Dark Mode */}
                           <div className="absolute inset-0 pointer-events-none opacity-0 dark:opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
-                          
+
                           {/* Top Bar: Status, Tournament, DateTime */}
                           <div className="relative flex justify-between items-start mb-6 w-full gap-2">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className={`shrink-0 inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
-                                isOngoing 
-                                  ? "bg-red-600 text-white" 
-                                  : isDone 
-                                  ? "bg-zinc-700 text-zinc-300"
-                                  : "bg-amber-500 text-amber-950"
-                              }`}>
+                              <span className={`shrink-0 inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${isOngoing
+                                  ? "bg-red-600 text-white"
+                                  : isDone
+                                    ? "bg-zinc-700 text-zinc-300"
+                                    : "bg-amber-500 text-amber-950"
+                                }`}>
                                 {isOngoing ? "LIVE" : isDone ? "SELESAI" : "MENDATANG"}
                               </span>
                               <p className="text-slate-600 dark:text-zinc-400 text-[11px] font-bold uppercase tracking-widest truncate">

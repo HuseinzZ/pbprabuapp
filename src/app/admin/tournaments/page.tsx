@@ -21,7 +21,7 @@ function TournamentsPageContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const supabase = createClient();
-  
+
   const urlFilter = (searchParams.get("status") as FilterStatus) || "all";
   const urlSearch = searchParams.get("search") || "";
   const urlPageSize = Number(searchParams.get("size")) || 10;
@@ -92,12 +92,12 @@ function TournamentsPageContent() {
     setLoading(true);
     const { syncTournamentStatuses } = await import("@/lib/utils/tournamentStatus");
     await syncTournamentStatuses();
-    
+
     const query = supabase
       .from("tournaments")
       .select("*, points(name)")
       .order("start_date", { ascending: false });
-      
+
     const { data } = await query;
     setTournaments((data as Tournament[]) ?? []);
     setLoading(false);
@@ -128,16 +128,16 @@ function TournamentsPageContent() {
 
   const filteredTournaments = useMemo(() => {
     let list = [...tournaments];
-    
+
     const q = urlSearch.trim().toLowerCase();
     if (q) {
-      list = list.filter(t => 
-        t.name.toLowerCase().includes(q) || 
-        (t.location ?? "").toLowerCase().includes(q) || 
+      list = list.filter(t =>
+        t.name.toLowerCase().includes(q) ||
+        (t.location ?? "").toLowerCase().includes(q) ||
         (t.points?.name ?? "").toLowerCase().includes(q)
       );
     }
-    
+
     if (urlFilter !== 'all') {
       list = list.filter(t => t.status === urlFilter);
     }
@@ -156,7 +156,7 @@ function TournamentsPageContent() {
         default: return 0;
       }
     });
-    
+
     return list;
   }, [tournaments, urlSearch, urlFilter, urlDate, urlSortBy]);
 
@@ -207,13 +207,13 @@ function TournamentsPageContent() {
               "turnamen.csv",
               ["No", "Nama", "Tipe", "Status", "Lokasi", "Tanggal Mulai", "Peserta Maks", "Hadiah"],
               filteredTournaments.map((t, i) => [
-                i + 1, t.name, t.points?.name ?? "-", t.status, t.location ?? "-", 
-                new Date(t.start_date).toLocaleDateString("id-ID"), 
+                i + 1, t.name, t.points?.name ?? "-", t.status, t.location ?? "-",
+                new Date(t.start_date).toLocaleDateString("id-ID"),
                 t.max_participants ?? "-", t.prize_pool ?? 0,
               ])
             )}
             onExportJSON={() => exportJSON(
-              "turnamen.json", 
+              "turnamen.json",
               filteredTournaments.map((t, i) => ({
                 no: i + 1,
                 name: t.name,
@@ -235,7 +235,7 @@ function TournamentsPageContent() {
 
       {/* Dashboard Grid System */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        
+
         {/* Main List Section (Wide Column) */}
         <section className="lg:col-span-3 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl shadow-sm flex flex-col">
           <TournamentFilters
@@ -277,18 +277,8 @@ function TournamentsPageContent() {
             <p className="text-xs text-slate-500 dark:text-gray-400 leading-relaxed">
               Manajemen status turnamen, registrasi, dan kontrol turnamen diatur pada halaman ini. Status diperbarui secara otomatis berdasarkan tanggal.
             </p>
-            <div className="pt-3 border-t border-slate-100 dark:border-gray-800 text-[11px] font-semibold text-slate-400 dark:text-gray-500 space-y-2.5">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Auto-sync Status Aktif</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Level Akses Terproteksi (Admin)</span>
-              </div>
-            </div>
           </div>
-          
+
           <ActivityLogs logs={logs} onClear={handleClearLogs} />
         </section>
 

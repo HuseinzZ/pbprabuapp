@@ -37,8 +37,8 @@ export default function AboutSection() {
               Kami berkomitmen untuk mengembangkan bakat pemain di semua level, mulai dari pemula hingga atlet kompetitif.
             </p>
             <p className="text-slate-600 dark:text-slate-300 text-base md:text-lg leading-relaxed mb-10">
-              Dengan platform digital ini, kami menyatukan seluruh ekosistem komunitas — manajemen pemain,
-              penyelenggaraan turnamen, dan dokumentasi perjalanan bersama — dalam satu portal yang modern.
+              Dengan platform digital ini, kami menyatukan seluruh ekosistem komunitas, manajemen pemain,
+              penyelenggaraan turnamen, dan dokumentasi perjalanan bersama dalam satu portal yang modern.
             </p>
             <div className="flex flex-col sm:flex-row flex-wrap gap-3">
               <Link href="/auth/register" className="bg-brand-600 hover:bg-brand-500 text-white font-bold !rounded-full px-8 py-3 transition-colors shadow-sm w-full sm:w-auto text-center">
@@ -83,7 +83,7 @@ export default function AboutSection() {
                 Menjadi komunitas badminton terdepan di Bandung yang tidak hanya berfokus pada prestasi olahraga, tetapi juga membangun gaya hidup sehat, solidaritas, dan persaudaraan yang erat antar pecinta bulu tangkis dari berbagai kalangan.
               </p>
             </div>
-            
+
             {/* Misi */}
             <div className="flex-1 p-8 md:p-10 rounded-3xl bg-brand-500 border border-brand-400 shadow-lg hover:shadow-brand-500/30 transition-shadow relative overflow-hidden group">
               <div className="absolute -bottom-10 -right-6 text-9xl opacity-[0.08] transform group-hover:-translate-y-4 transition-transform duration-500">

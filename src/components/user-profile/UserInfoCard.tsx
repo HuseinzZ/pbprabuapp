@@ -101,7 +101,7 @@ export default function UserInfoCard({ userId }: { userId: string }) {
             )}
           </div>
         </div>
-        <div>
+        <div className="text-center sm:text-left">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white/90">
             {profile?.fullname || "—"}
           </h2>

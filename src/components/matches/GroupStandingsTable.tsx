@@ -9,11 +9,6 @@ interface Props {
   allComplete: boolean;
 }
 
-const POSITION_BADGES: Record<number, string> = {
-  1: "🥇",
-  2: "🥈",
-  3: "🥉",
-};
 
 export default function GroupStandingsTable({ groupName, standings, allComplete }: Props) {
   if (standings.length === 0) return null;
@@ -70,7 +65,6 @@ export default function GroupStandingsTable({ groupName, standings, allComplete 
                 >
                   <td className="px-3 py-2 text-xs">
                     <span className="flex items-center gap-1">
-                      {POSITION_BADGES[s.position] ?? ""}
                       <span className="font-bold text-gray-600 dark:text-gray-400">{s.position}</span>
                     </span>
                   </td>

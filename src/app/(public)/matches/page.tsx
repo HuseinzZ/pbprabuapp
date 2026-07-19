@@ -199,7 +199,7 @@ export default function PublicMatchesPage() {
       setLoading(false);
     }
     fetchMatches();
-  }, [dateFilter, supabase]);
+  }, [dateFilter, supabase, isInitialized]);
 
   const getTeamName = (team: any, defaultName: string) => {
     if (!team) return defaultName;

@@ -1,13 +1,7 @@
 import ResetPasswordForm from "@/components/auth/ResetPasswordForm";
-import { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import SponsorSection from "@/components/users/SponsorSection";
-
-export const metadata: Metadata = {
-    title: "Ubah Password | PB Prabu Bandung",
-    description: "Halaman Ubah Password",
-};
 
 export default async function ResetPasswordUserPage() {
     const supabase = await createClient();

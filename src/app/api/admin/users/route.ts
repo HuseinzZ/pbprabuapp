@@ -63,8 +63,7 @@ export async function POST(req: Request) {
     const authEmail = email || `user_${Date.now()}@pbprabu.local`;
     const authPassword = password || (Math.random().toString(36).slice(-8) + "Aa1!");
 
-    // 1. Buat auth user
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const { data, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: authEmail,
       password: authPassword,
       email_confirm: true,
@@ -75,12 +74,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
-    const userId = authData.user.id;
+    const authData = data;
+    const userId = data.user.id;
 
-    // 3. Upsert tabel profile
+    // 3. Insert tabel profile
     const { error: profileErr } = await supabaseAdmin
       .from("profile")
-      .upsert({
+      .insert({
         user_id: userId,
         fullname,
         username: username || null,
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
         hand_dominance: hand_dominance || null,
         birth_date: birth_date || null,
         joined_at: new Date().toISOString().split("T")[0],
-      }, { onConflict: "user_id" });
+      });
 
     if (profileErr) {
       return NextResponse.json({ error: "Gagal membuat profil: " + profileErr.message }, { status: 400 });

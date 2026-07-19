@@ -1,4 +1,3 @@
-import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import React from 'react';
 import {
@@ -8,11 +7,6 @@ import {
 import Link from 'next/link';
 import { MatchStatusDonut, TopPlayersBar, MatchesPerDayLine } from '@/components/dashboard/DashboardCharts';
 import { STATUS_CONFIG } from '@/app/admin/tournaments/types';
-
-export const metadata: Metadata = {
-  title: 'Dashboard | PB Prabu Bandung',
-  description: 'Ringkasan data PB Prabu Bandung',
-};
 
 function StatCard({
   label, value, icon, color, sub
@@ -102,7 +96,7 @@ export default async function AdminDashboard() {
     .order('ranking_points', { ascending: false })
     .limit(8);
 
-  // ── Matches per day (last 7 days) ─────────────────────────────────────────
+  // ── Matches per day (last 10 days) ─────────────────────────────────────────
   const { data: matchDates } = await supabase
     .from('matches')
     .select('updated_at, status')

@@ -312,7 +312,7 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
                   onChange={(e) => setEventTitle(e.target.value)}
                   placeholder="Judul event..."
                   disabled={isLoading}
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 focus:bg-white dark:focus:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:border-brand-500 dark:focus:border-brand-500 transition-all disabled:opacity-50"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:focus:border-brand-500 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 disabled:opacity-50"
                 />
               </div>
 
@@ -340,8 +340,8 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
                               onChange={() => setEventLevel(key)}
                               disabled={isLoading}
                             />
-                            <span className="flex items-center justify-center w-5 h-5 mr-2 border border-gray-300 rounded-full box dark:border-gray-700">
-                              <span className={`h-2 w-2 rounded-full bg-white ${eventLevel === key ? "block" : "hidden"}`} />
+                            <span className="flex items-center justify-center w-5 h-5 mr-2 border border-gray-300 bg-white dark:bg-gray-900 rounded-full box dark:border-gray-700">
+                              <span className={`h-2 w-2 rounded-full bg-brand-500 ${eventLevel === key ? "block" : "hidden"}`} />
                             </span>
                           </span>
                           {value.label}
@@ -352,30 +352,32 @@ const Calendar: React.FC<CalendarProps> = ({ initialEvents = [], children }) => 
                 </div>
               </div>
 
-              {/* Tanggal Mulai */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                  Tanggal Mulai
-                </label>
-                <DatePicker
-                  id="event-start-date"
-                  value={eventStartDate}
-                  onChange={setEventStartDate}
-                  placeholder="Pilih tanggal mulai"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Tanggal Mulai */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                    Tanggal Mulai
+                  </label>
+                  <DatePicker
+                    id="event-start-date"
+                    value={eventStartDate}
+                    onChange={setEventStartDate}
+                    placeholder="Pilih tanggal mulai"
+                  />
+                </div>
 
-              {/* Tanggal Selesai */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                  Tanggal Selesai
-                </label>
-                <DatePicker
-                  id="event-end-date"
-                  value={eventEndDate}
-                  onChange={setEventEndDate}
-                  placeholder="Pilih tanggal selesai"
-                />
+                {/* Tanggal Selesai */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                    Tanggal Selesai
+                  </label>
+                  <DatePicker
+                    id="event-end-date"
+                    value={eventEndDate}
+                    onChange={setEventEndDate}
+                    placeholder="Pilih tanggal selesai"
+                  />
+                </div>
               </div>
             </div>
 

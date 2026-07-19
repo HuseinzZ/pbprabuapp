@@ -1,7 +1,8 @@
 import React from "react";
 import Image from "next/image";
-import { Edit, Trash2, ShieldAlert, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Edit, Trash2, ShieldAlert, Calendar } from "lucide-react";
 import { User, FilterLevel, LEVEL_LABELS } from "@/app/admin/users/types";
+import Pagination from "../tables/Pagination";
 
 interface TableUsersProps {
   loading: boolean;
@@ -135,7 +136,9 @@ export default function TableUsers({
 
                       {/* Contact block */}
                       <td className="p-4 whitespace-nowrap">
-                        <div className="text-xs text-slate-800 dark:text-gray-300 font-medium">{user.email || "—"}</div>
+                        <div className="text-xs text-slate-800 dark:text-gray-300 font-medium">
+                          {user.email || "—"}
+                        </div>
                         <div className="text-[10px] font-mono text-slate-400 mt-0.5">{user.address ? `${user.address.substring(0, 20)}...` : "—"}</div>
                       </td>
 
@@ -260,7 +263,9 @@ export default function TableUsers({
                     <div className="border-t border-b border-slate-100 dark:border-gray-700 py-3 space-y-2 text-xs">
                       <div className="flex justify-between">
                         <span className="text-slate-400 dark:text-gray-500 font-bold tracking-wider uppercase text-[9px]">Email:</span>
-                        <span className="font-semibold text-slate-800 dark:text-gray-300">{user.email || "—"}</span>
+                        <span className="font-semibold text-slate-800 dark:text-gray-300">
+                          {user.email || "—"}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400 dark:text-gray-500 font-bold tracking-wider uppercase text-[9px]">Poin:</span>
@@ -316,37 +321,11 @@ export default function TableUsers({
             <strong className="text-slate-900 dark:text-white">{totalUsers}</strong> pengguna
           </span>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="p-2 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-slate-500 dark:text-gray-400 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer bg-white dark:bg-gray-800"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-              <button
-                key={pageNum}
-                onClick={() => onPageChange(pageNum)}
-                className={`min-w-9 h-9 text-xs rounded-lg font-bold border transition ${
-                  currentPage === pageNum
-                    ? "bg-brand-500 border-brand-500 text-white shadow-sm"
-                    : "border-slate-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 bg-white dark:bg-gray-800"
-                }`}
-              >
-                {pageNum}
-              </button>
-            ))}
-
-            <button
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="p-2 border border-slate-200 dark:border-gray-700 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-slate-500 dark:text-gray-400 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer bg-white dark:bg-gray-800"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+          />
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -14,6 +15,7 @@ import Loader from "@/components/shared/Loader";
 export default function PublicCalendarPage() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState<{ title: string; start: string | Date; allDay?: boolean } | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -133,8 +135,16 @@ export default function PublicCalendarPage() {
               events={events}
               selectable={false}
               eventContent={renderEventContent}
+              eventClick={(info) => {
+                setSelectedEvent({
+                  title: info.event.title,
+                  start: info.event.start || new Date(),
+                  allDay: info.event.allDay
+                });
+              }}
               height="auto"
               eventDisplay="block"
+              className="cursor-pointer"
             />
           </div>
         )}
@@ -143,6 +153,34 @@ export default function PublicCalendarPage() {
       <div className="mt-16">
         <SponsorSection />
       </div>
+
+      {/* Event Detail Modal */}
+      {selectedEvent && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setSelectedEvent(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-sm w-full overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="font-bold text-gray-900 dark:text-white">Detail Jadwal</h3>
+              <button onClick={() => setSelectedEvent(null)} className="text-gray-400 hover:text-gray-500 text-xl font-semibold leading-none cursor-pointer">&times;</button>
+            </div>
+            <div className="p-5 space-y-4 text-sm text-gray-600 dark:text-gray-300">
+              <div>
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Kegiatan</div>
+                <div className="font-medium text-gray-900 dark:text-white">{selectedEvent.title}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Tanggal</div>
+                <div className="font-medium text-gray-900 dark:text-white">
+                  {new Date(selectedEvent.start).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </div>
+              </div>
+            </div>
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+              <button onClick={() => setSelectedEvent(null)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer">Tutup</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

@@ -79,9 +79,9 @@ export default function PointHistoryFilters({
       </div>
 
       {/* Secondary Filters Dropdown Rows */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
         {/* Tournament Filter */}
-        <div className="col-span-1 lg:col-span-2">
+        <div className="col-span-1">
           <label className={labelClass}>Turnamen</label>
           <select value={tournamentId} onChange={(e) => onTournamentChange(e.target.value)} className={inputClass}>
             <option value="">Semua Turnamen</option>
@@ -92,7 +92,7 @@ export default function PointHistoryFilters({
         </div>
 
         {/* Date Filter */}
-        <div className="col-span-1 lg:col-span-1">
+        <div className="col-span-1">
           <label className={labelClass}>Tanggal</label>
           <div className="relative">
             <DatePicker
@@ -105,7 +105,7 @@ export default function PointHistoryFilters({
         </div>
 
         {/* Sort Filter */}
-        <div className="col-span-1 lg:col-span-1">
+        <div className="col-span-1">
           <label className={labelClass}>Urutan</label>
           <select value={sort} onChange={(e) => onSortChange(e.target.value)} className={inputClass}>
             <option value="points-desc">Poin Tertinggi</option>

@@ -38,6 +38,8 @@ export interface Match {
   tournaments?: {
     name: string;
     start_date: string;
+    match_format?: string | null;
+    gender_category?: string | null;
     points?: { name: string } | null;
   } | null;
 }
@@ -46,6 +48,7 @@ interface MatchTableProps {
   loading: boolean;
   matches: Match[];
   onInputScore?: (match: Match) => void;
+  onEditMatch?: (match: Match) => void;
   onDeleteMatch?: (matchId: string) => void;
 }
 
@@ -138,7 +141,7 @@ function SkeletonRow() {
 
 // ─── Match Grid Component ──────────────────────────────────────────────────────
 
-function MatchGrid({ matches: initialMatches, onInputScore, onDeleteMatch }: { matches: Match[]; onInputScore?: (m: Match) => void; onDeleteMatch?: (id: string) => void }) {
+function MatchGrid({ matches: initialMatches, onInputScore, onEditMatch, onDeleteMatch }: { matches: Match[]; onInputScore?: (m: Match) => void; onEditMatch?: (m: Match) => void; onDeleteMatch?: (id: string) => void }) {
   const [matches, setMatches] = useState<Match[]>(initialMatches);
   const supabase = createClient();
 
@@ -270,7 +273,7 @@ function MatchGrid({ matches: initialMatches, onInputScore, onDeleteMatch }: { m
             <div className="p-4 bg-slate-50/50 dark:bg-gray-800/50 border-b border-slate-100 dark:border-gray-800 flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <span className="px-2 py-0.5 rounded text-[8px] font-bold text-white uppercase tracking-wider bg-indigo-600 block shrink-0 select-none">
-                  {match.category || 'Match'}
+                  {match.tournaments?.match_format && match.tournaments?.gender_category ? `${match.tournaments.match_format}_${match.tournaments.gender_category}` : 'Match'}
                 </span>
                 <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 truncate max-w-[120px]">
                   Match {idx + 1}
@@ -376,10 +379,19 @@ function MatchGrid({ matches: initialMatches, onInputScore, onDeleteMatch }: { m
               </span>
 
               <div className="flex items-center gap-1">
+                {onEditMatch && (
+                  <button
+                        onClick={() => onEditMatch(match)}
+                        className="p-1 border border-slate-200 dark:border-gray-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-gray-700 rounded transition cursor-pointer"
+                        title="Edit Jadwal"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 {onDeleteMatch && (
                   <button
                         onClick={() => onDeleteMatch(match.id)}
-                        className="p-1 border border-red-200 text-red-500 hover:bg-red-50 rounded transition cursor-pointer"
+                        className="p-1 border border-red-200 dark:border-red-500/20 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition cursor-pointer"
                         title="Hapus"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -396,7 +408,7 @@ function MatchGrid({ matches: initialMatches, onInputScore, onDeleteMatch }: { m
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export default function MatchTable({ loading, matches, onInputScore, onDeleteMatch }: MatchTableProps) {
+export default function MatchTable({ loading, matches, onInputScore, onEditMatch, onDeleteMatch }: MatchTableProps) {
   const supabase = createClient();
   const [editingGroupKey, setEditingGroupKey] = useState<string | null>(null);
   const [editGroupName, setEditGroupName] = useState("");
@@ -536,7 +548,7 @@ export default function MatchTable({ loading, matches, onInputScore, onDeleteMat
               </div>
 
               {/* Matches Grid */}
-              <MatchGrid matches={groupMatches} onInputScore={onInputScore} onDeleteMatch={onDeleteMatch} />
+              <MatchGrid matches={groupMatches} onInputScore={onInputScore} onEditMatch={onEditMatch} onDeleteMatch={onDeleteMatch} />
             </div>
           );
         })}
@@ -566,7 +578,7 @@ export default function MatchTable({ loading, matches, onInputScore, onDeleteMat
               </div>
             </div>
             {/* Matches Grid */}
-            <MatchGrid matches={tMatches} onInputScore={onInputScore} onDeleteMatch={onDeleteMatch} />
+            <MatchGrid matches={tMatches} onInputScore={onInputScore} onEditMatch={onEditMatch} onDeleteMatch={onDeleteMatch} />
           </div>
         )
       })}
@@ -591,7 +603,7 @@ export default function MatchTable({ loading, matches, onInputScore, onDeleteMat
               </div>
             </div>
             {/* Matches Grid */}
-            <MatchGrid matches={tMatches} onInputScore={onInputScore} onDeleteMatch={onDeleteMatch} />
+            <MatchGrid matches={tMatches} onInputScore={onInputScore} onEditMatch={onEditMatch} onDeleteMatch={onDeleteMatch} />
           </div>
         )
       })}
@@ -617,7 +629,7 @@ export default function MatchTable({ loading, matches, onInputScore, onDeleteMat
               </div>
             </div>
             {/* Matches Grid */}
-            <MatchGrid matches={tMatches} onInputScore={onInputScore} onDeleteMatch={onDeleteMatch} />
+            <MatchGrid matches={tMatches} onInputScore={onInputScore} onEditMatch={onEditMatch} onDeleteMatch={onDeleteMatch} />
           </div>
         )
       })}

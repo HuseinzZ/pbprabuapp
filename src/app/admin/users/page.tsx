@@ -252,7 +252,7 @@ function UsersPageContent() {
     const newStatus = !user.is_active;
     // Optimistic update
     setUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, is_active: newStatus } : u));
-    
+
     // Call API or Supabase
     const { error } = await supabase.from("profile").update({ is_active: newStatus }).eq("id", user.id);
     if (error) {
@@ -267,13 +267,13 @@ function UsersPageContent() {
 
   // Filter & Pagination logic (Client side filtered from all users)
   let filtered = users.filter((p) => {
-    const matchSearch = 
+    const matchSearch =
       (p.fullname ?? "").toLowerCase().includes(urlSearch.toLowerCase()) ||
       (p.email ?? "").toLowerCase().includes(urlSearch.toLowerCase()) ||
       (p.username ?? "").toLowerCase().includes(urlSearch.toLowerCase());
-      
+
     const matchLevel = urlFilter === "all" || p.level === urlFilter;
-    const matchStatus = urlStatusFilter === "all" || 
+    const matchStatus = urlStatusFilter === "all" ||
       (urlStatusFilter === "active" ? p.is_active : !p.is_active);
 
     return matchSearch && matchLevel && matchStatus;
@@ -286,9 +286,9 @@ function UsersPageContent() {
       case "username_asc": return (a.username || "").localeCompare(b.username || "");
       case "username_desc": return (b.username || "").localeCompare(a.username || "");
       case "email_asc": return (a.email || "").localeCompare(b.email || "");
-      case "joined_desc": 
+      case "joined_desc":
         return new Date(b.joined_at || b.created_at || "").getTime() - new Date(a.joined_at || a.created_at || "").getTime();
-      case "joined_asc": 
+      case "joined_asc":
         return new Date(a.joined_at || a.created_at || "").getTime() - new Date(b.joined_at || b.created_at || "").getTime();
       case "points_desc": return (b.ranking_points || 0) - (a.ranking_points || 0);
       default: return 0;
@@ -339,25 +339,25 @@ function UsersPageContent() {
         <PageBreadcrumb pageTitle="Manajemen User" />
         <div className="flex items-center justify-end">
           <ExportButtons
-          disabled={loading || users.length === 0}
-          onExportCSV={() =>
-            exportCSV(
-              "users.csv",
-              ["No", "Nama", "Username", "Email", "Role", "Level", "Poin", "Status"],
-              filtered.map((p, i) => [
-                i + 1,
-                p.fullname,
-                p.username ?? "-",
-                p.email ?? "-",
-                p.role,
-                p.level ?? "-",
-                p.ranking_points,
-                p.is_active ? "Aktif" : "Nonaktif",
-              ])
-            )
-          }
-          onExportJSON={() =>
-            exportJSON("users.json", filtered.map((p, i) => ({
+            disabled={loading || users.length === 0}
+            onExportCSV={() =>
+              exportCSV(
+                "users.csv",
+                ["No", "Nama", "Username", "Email", "Role", "Level", "Poin", "Status"],
+                filtered.map((p, i) => [
+                  i + 1,
+                  p.fullname,
+                  p.username ?? "-",
+                  p.email ?? "-",
+                  p.role,
+                  p.level ?? "-",
+                  p.ranking_points,
+                  p.is_active ? "Aktif" : "Nonaktif",
+                ])
+              )
+            }
+            onExportJSON={() =>
+              exportJSON("users.json", filtered.map((p, i) => ({
                 no: i + 1,
                 name: p.fullname,
                 username: p.username || "-",
@@ -366,10 +366,10 @@ function UsersPageContent() {
                 level: p.level || "-",
                 points: p.ranking_points,
                 status: p.is_active ? "Aktif" : "Nonaktif",
-            })))
-          }
-          onExportPDF={() => exportPDF("print-users", "Users.pdf")}
-        />
+              })))
+            }
+            onExportPDF={() => exportPDF("print-users", "Users.pdf")}
+          />
         </div>
       </div>
 
@@ -378,7 +378,7 @@ function UsersPageContent() {
 
       {/* Dashboard Grid System */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        
+
         {/* Main User List Section (Wide Column) */}
         <section className="lg:col-span-3 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl shadow-sm flex flex-col">
           <UserFilters
@@ -427,22 +427,8 @@ function UsersPageContent() {
             <p className="text-xs text-slate-500 dark:text-gray-400 leading-relaxed">
               Pengaturan peran (role), status akun (aktif/nonaktif), dan validasi pengguna dikontrol secara langsung oleh sistem. Jika menemukan ketidaksesuaian antara jumlah poin pada profil dan poin turnamen, klik tombol <b>"Sync Poin"</b> pada panel filter.
             </p>
-            <div className="pt-3 border-t border-slate-100 dark:border-gray-800 text-[11px] font-semibold text-slate-400 dark:text-gray-500 space-y-2.5">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Sinkronisasi Auth User (Supabase)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Level Akses Terproteksi (Admin)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                <span>Real-time Status Update Aktif</span>
-              </div>
-            </div>
           </div>
-          
+
           <ActivityLogs logs={logs} onClear={handleClearLogs} />
         </section>
 

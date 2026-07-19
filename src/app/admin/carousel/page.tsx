@@ -9,6 +9,7 @@ import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import Link from 'next/link';
 import { deleteStorageFile } from '@/lib/utils/supabaseStorage';
 import DeleteCarouselModal, { CarouselItemBase } from '@/components/carousel/DeleteCarouselModal';
+import CarouselModal from '@/components/carousel/CarouselModal';
 
 export type CarouselItem = {
   id: string;
@@ -26,6 +27,10 @@ export default function CarouselDashboard() {
   const [deleteTarget, setDeleteTarget] = useState<CarouselItemBase | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalTarget, setModalTarget] = useState<CarouselItem | null>(null);
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -90,13 +95,13 @@ export default function CarouselDashboard() {
       <div className="flex flex-col gap-4">
         <PageBreadcrumb pageTitle="Banner Beranda" />
         <div className="flex items-center justify-end">
-          <Link
-            href="/admin/carousel/add"
-            className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all"
+          <button
+            onClick={() => { setModalTarget(null); setIsModalOpen(true); }}
+            className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Tambah Banner
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -169,13 +174,13 @@ export default function CarouselDashboard() {
                       </td>
                       <td className="p-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <Link
-                            href={`/admin/carousel/edit/${item.id}`}
+                          <button
+                            onClick={() => { setModalTarget(item); setIsModalOpen(true); }}
                             title="Edit banner"
                             className="p-1.5 border border-slate-200 dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600 rounded hover:bg-slate-50 dark:hover:bg-gray-800 text-slate-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition duration-150 cursor-pointer"
                           >
                             <Edit className="w-3.5 h-3.5" />
-                          </Link>
+                          </button>
                           <button
                             onClick={() => setDeleteTarget({ id: item.id, title: item.title, image_url: item.image_url })}
                             title="Hapus banner"
@@ -244,6 +249,18 @@ export default function CarouselDashboard() {
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
       />
+
+      {isModalOpen && (
+        <CarouselModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            fetchCarousels();
+          }}
+          carouselToEdit={modalTarget}
+        />
+      )}
     </div>
   );
 }

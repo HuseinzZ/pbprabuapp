@@ -13,8 +13,10 @@ import SummaryStats from "@/components/matches/SummaryStats";
 import MatchTable from "@/components/matches/MatchTable";
 import ScoreInputModal from "@/components/matches/ScoreInputModal";
 import AddMatchModal from "@/components/matches/AddMatchModal";
+import EditMatchModal from "@/components/matches/EditMatchModal";
+import DeleteMatchModal from "@/components/matches/DeleteMatchModal";
 import PrintReport, { PrintColumn } from "@/components/common/PrintReport";
-import { exportCSV, exportPDF } from "@/lib/utils/export";
+import { exportCSV, exportPDF, exportJSON } from "@/lib/utils/export";
 import ActivityLogs from "@/components/users/ActivityLogs";
 import { type Match } from "@/components/matches/MatchTable";
 
@@ -30,12 +32,15 @@ function MatchesContent() {
   const urlTournamentDate = searchParams.has("date") ? searchParams.get("date") || "" : "";
   const urlTournament = searchParams.get("tournament") || "";
   const [matches, setMatches] = useState<Match[]>([]);
-  const [tournaments, setTournaments] = useState<{id: string, name: string, start_date?: string}[]>([]);
+  const [tournaments, setTournaments] = useState<{ id: string, name: string, start_date?: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [localSearch, setLocalSearch] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  const [matchToDelete, setMatchToDelete] = useState<Match | null>(null);
+  const [isDeletingMatch, setIsDeletingMatch] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
 
   useEffect(() => {
@@ -54,7 +59,7 @@ function MatchesContent() {
     localStorage.removeItem('match_points_logs');
     toast.success("Log aktivitas sesi berhasil dibersihkan!");
   }, []);
-  
+
   // URL helpers
   const updateParams = useCallback((updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -63,7 +68,25 @@ function MatchesContent() {
     });
     router.push(`${pathname}?${params.toString()}`);
   }, [pathname, router, searchParams]);
-  
+
+  const handleDeleteClick = (id: string) => {
+    const match = matches.find(m => m.id === id);
+    if (match) setMatchToDelete(match);
+  };
+
+  const confirmDeleteMatch = async () => {
+    if (!matchToDelete) return;
+    setIsDeletingMatch(true);
+    const { error } = await supabase.from('matches').delete().eq('id', matchToDelete.id);
+    setIsDeletingMatch(false);
+    if (error) toast.error("Gagal menghapus: " + error.message);
+    else {
+      toast.success("Jadwal berhasil dihapus");
+      setMatchToDelete(null);
+      fetchData(true);
+    }
+  };
+
   // Fetch tournaments for dropdown
   useEffect(() => {
     const fetchTournaments = async () => {
@@ -72,10 +95,10 @@ function MatchesContent() {
         .select("id, name, start_date, created_at")
         .order("start_date", { ascending: false })
         .order("created_at", { ascending: false });
-        
+
       if (data) {
         setTournaments(data);
-        
+
         // Auto-select on initial load if no search params are present
         if (data.length > 0 && Array.from(searchParams.keys()).length === 0) {
           const params = new URLSearchParams(window.location.search);
@@ -102,11 +125,12 @@ function MatchesContent() {
         team1_id, team2_id,
         teams_team1:teams!team1_id(id, name, is_bye_team),
         teams_team2:teams!team2_id(id, name, is_bye_team),
-        tournaments!inner(name, start_date, points(name))
+        tournaments!inner(name, start_date, match_format, gender_category, points(name))
       `)
-      .order("phase", { ascending: true })
-      .order("group_name", { ascending: true })
-      .order("match_number", { ascending: true });
+      // We'll rely on client-side sorting for logical phase order
+      // .order("phase", { ascending: true })
+      // .order("group_name", { ascending: true })
+      // .order("match_number", { ascending: true });
     if (urlTournamentDate) {
       const [year, month, day] = urlTournamentDate.split("-");
       if (year && month && day) {
@@ -121,7 +145,37 @@ function MatchesContent() {
     if (urlPhase) query = query.eq("phase", urlPhase);
     const { data: matchData, error: matchErr } = await query;
     if (matchErr) { toast.error(matchErr.message); }
-    else { setMatches((matchData as unknown as Match[]) ?? []); }
+    else { 
+      const fetchedMatches = (matchData as unknown as Match[]) ?? [];
+      
+      const phaseWeights: Record<string, number> = {
+        'RR': 1,
+        'R16': 2,
+        'QF': 3,
+        'SF': 4,
+        '3RD': 5,
+        'F': 6,
+      };
+
+      fetchedMatches.sort((a, b) => {
+        const phaseA = (a.phase || '').toUpperCase();
+        const phaseB = (b.phase || '').toUpperCase();
+        const wA = phaseWeights[phaseA] || 99;
+        const wB = phaseWeights[phaseB] || 99;
+        
+        if (wA !== wB) return wA - wB;
+        
+        const gA = a.group_name || '';
+        const gB = b.group_name || '';
+        if (gA !== gB) return gA.localeCompare(gB);
+        
+        const mA = a.match_number || 0;
+        const mB = b.match_number || 0;
+        return mA - mB;
+      });
+
+      setMatches(fetchedMatches); 
+    }
     if (isRefresh) setRefreshing(false); else setLoading(false);
   }, [urlTournamentDate, urlGroup, urlStatus, urlPhase, urlTournament, supabase]);
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -165,16 +219,16 @@ function MatchesContent() {
 
   const filteredMatches = useMemo(() => {
     let list = [...matches];
-    
+
     const q = localSearch.trim().toLowerCase();
     if (q) {
-      list = list.filter(m => 
+      list = list.filter(m =>
         (m.teams_team1?.name ?? "").toLowerCase().includes(q) ||
         (m.teams_team2?.name ?? "").toLowerCase().includes(q) ||
         (m.tournaments?.name ?? "").toLowerCase().includes(q)
       );
     }
-    
+
     return list;
   }, [matches, localSearch]);
 
@@ -208,17 +262,18 @@ function MatchesContent() {
                 ])
               )
             }
+            onExportJSON={() => exportJSON("jadwal.json", matches)}
             onExportPDF={() => exportPDF("print-matches", "Jadwal_Pertandingan.pdf")}
           />
         </div>
       </div>
-      
+
       {/* Aggregate Bento Metrics */}
       <SummaryStats stats={stats} />
 
       {/* Dashboard Grid System */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        
+
         {/* Main List Section (Wide Column) */}
         <section className="lg:col-span-3 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-xl shadow-sm flex flex-col">
           {/* Filters */}
@@ -238,13 +293,15 @@ function MatchesContent() {
             setTournamentId={(val) => updateParams({ tournament: val })}
             tournaments={tournaments.filter(t => !urlTournamentDate || (t.start_date && t.start_date.startsWith(urlTournamentDate)))}
           />
-          
+
           {/* We wrap Table to blend perfectly with section just like points page */}
           <div className="[&>div]:border-0 [&>div]:shadow-none [&>div]:rounded-none">
             <MatchTable
               loading={loading}
               matches={filteredMatches}
               onInputScore={(m) => setSelectedMatch(m)}
+              onEditMatch={(m) => setEditingMatch(m)}
+              onDeleteMatch={handleDeleteClick}
             />
           </div>
         </section>
@@ -259,16 +316,6 @@ function MatchesContent() {
             <p className="text-xs text-slate-500 dark:text-gray-400 leading-relaxed">
               Seluruh transaksi penyuntingan skor, penggantian tim, dan manipulasi poin telah diamankan menggunakan sistem <strong className="text-slate-800 dark:text-white">Strip Tag HTML (XSS Protection)</strong>.
             </p>
-            <div className="pt-3 border-t border-slate-100 dark:border-gray-800 text-[11px] font-semibold text-slate-400 dark:text-gray-500 space-y-2.5">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Angka skor wajib bulat positif</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Tim lawan tidak boleh serupa</span>
-              </div>
-            </div>
           </div>
 
           <ActivityLogs logs={logs} onClear={handleClearLogs} />
@@ -298,6 +345,21 @@ function MatchesContent() {
           setRefreshing(true);
           fetchData(true);
         }}
+      />
+
+      <EditMatchModal
+        isOpen={!!editingMatch}
+        onClose={() => setEditingMatch(null)}
+        match={editingMatch}
+        onSaved={() => fetchData(true)}
+      />
+
+      <DeleteMatchModal
+        isOpen={!!matchToDelete}
+        onClose={() => setMatchToDelete(null)}
+        onConfirm={confirmDeleteMatch}
+        isDeleting={isDeletingMatch}
+        matchInfo={matchToDelete ? `${matchToDelete.teams_team1?.name || "Tim 1"} vs ${matchToDelete.teams_team2?.name || "Tim 2"}` : undefined}
       />
     </div>
   );
